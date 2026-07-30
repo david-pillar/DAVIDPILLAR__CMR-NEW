@@ -10,7 +10,7 @@ function renderClients(){
   el.innerHTML = list.map(c=>{
     const bookingsCount = DATA.bookings.filter(b=>b.clientId===c.id).length;
     const projectsCount = DATA.projects.filter(p=>p.clientId===c.id).length;
-    const waBtn = c.phone ? `<button class="icon-btn" style="color:#25D366;" onclick="event.stopPropagation();openWhatsapp('${c.phone.replace(/'/g,'')}')" title="Napísať na WhatsApp">
+    const waBtn = c.phone ? `<button class="icon-btn" style="color:#25D366;" onclick="event.stopPropagation();openWhatsappForClient('${c.id}')" title="Napísať na WhatsApp">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.21 4.79 1.21 5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.15c-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.15 8.15 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24 4.54 0 8.24 3.7 8.24 8.24 0 4.55-3.7 8.24-8.24 8.24zm4.52-6.17c-.25-.12-1.47-.72-1.7-.81-.23-.08-.4-.12-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.45-1.37-1.7-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.36-.77-1.86-.2-.48-.41-.42-.56-.43-.14-.01-.31-.01-.48-.01-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.06 0 1.22.88 2.39 1.01 2.56.12.17 1.74 2.67 4.23 3.73.59.26 1.05.41 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.1-.23-.16-.48-.28z"/></svg>
     </button>` : '';
     return `<div class="list-row" onclick="openClientModal('${c.id}')">

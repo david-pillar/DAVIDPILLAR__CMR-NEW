@@ -17,9 +17,25 @@ async function saveGoogleFormUrl(){
   await saveKey('settings', DATA.settings);
   showToast('Odkaz uložený');
 }
+// Publikované Google Sheets CSV odkazy vždy bežia cez docs.google.com. Obmedzenie na túto
+// doménu bráni tomu, aby appka (napr. po obnovení podvrhnutej zálohy, ktorá by mohla nastaviť
+// googleFormCsvUrl na cudziu adresu) automaticky poslala request na útočníkom kontrolovaný server.
+const GOOGLE_FORM_CSV_ALLOWED_HOSTS = ['docs.google.com'];
+function isAllowedGoogleFormCsvUrl(url){
+  try{
+    const u = new URL(url);
+    return u.protocol === 'https:' && GOOGLE_FORM_CSV_ALLOWED_HOSTS.includes(u.hostname);
+  }catch(e){
+    return false;
+  }
+}
 async function syncGoogleFormResponses(){
   const url = document.getElementById('gform-csv-url').value.trim();
   if(!url){ showToast('Najprv vlož odkaz na publikovaný CSV'); return; }
+  if(!isAllowedGoogleFormCsvUrl(url)){
+    showToast('Odkaz musí byť publikovaný CSV z docs.google.com — skús vložiť CSV text ručne nižšie');
+    return;
+  }
   await saveGoogleFormUrl();
   try{
     const res = await fetch(url);

@@ -56,6 +56,13 @@ function openWhatsapp(phone, message){
   if(!link){ showToast('Telefónne číslo sa nepodarilo rozpoznať'); return; }
   window.open(link, '_blank');
 }
+// Bezpečný wrapper pre tlačidlá vykresľované cez innerHTML: do onclick sa vkladá
+// len interné client.id (bezpečný reťazec z uid()), nikdy nie surové telefónne
+// číslo, ktoré by sa dalo zneužiť na XSS (viď 10-clients-projects-list.js).
+function openWhatsappForClient(clientId){
+  const client = DATA.clients.find(c=>c.id===clientId);
+  openWhatsapp(client ? client.phone : '');
+}
 function fmtDate(d){
   if(!d) return '—';
   const dt = new Date(d+'T00:00:00');
