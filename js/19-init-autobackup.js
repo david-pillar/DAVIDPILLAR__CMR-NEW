@@ -215,12 +215,15 @@ document.addEventListener('keydown', (e)=>{
 });
 
 /* ===================== INIT ===================== */
-checkPinLock();
+// checkPinLock() a loadAll() sa spustia až po prihlásení cez Supabase (initAuthGate),
+// aby sa dáta z cloudu nikdy nenačítavali/nezobrazovali pred overením identity.
 document.getElementById('pin-unlock-input').addEventListener('keydown', (e)=>{ if(e.key==='Enter') attemptUnlock(); });
 document.getElementById('pin-new-input').addEventListener('keydown', (e)=>{ if(e.key==='Enter') setAppPin(); });
 document.getElementById('quick-note-input').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addQuickNote(); });
+document.getElementById('auth-email').addEventListener('keydown', (e)=>{ if(e.key==='Enter') authSignIn(); });
+document.getElementById('auth-password').addEventListener('keydown', (e)=>{ if(e.key==='Enter') authSignIn(); });
 applyTheme(localStorage.getItem('slate:theme') || 'film');
-loadAll();
+initAuthGate();
 maybeShowInstallBanner();
 initAutoBackup();
 initCrmFolder();

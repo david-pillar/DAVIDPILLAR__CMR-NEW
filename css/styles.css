@@ -639,7 +639,7 @@
   textarea{resize:vertical;min-height:60px;}
   .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
-  #pinLockScreen{
+  #pinLockScreen, #authScreen{
     position:fixed;inset:0;background:var(--bg);z-index:500;
     display:flex;align-items:center;justify-content:center;padding:20px;
   }
@@ -648,6 +648,7 @@
     border-radius:var(--radius);padding:32px 28px;box-shadow:var(--shadow);
   }
   #pin-unlock-input{width:100%;}
+  #authScreen input{width:100%;}
 
   .toast{
     position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--surface-3);

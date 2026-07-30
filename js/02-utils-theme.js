@@ -79,17 +79,201 @@ function weeksSinceLabel(dateStr){
   return weeks === 1 ? 'pred 1 týždňom' : `pred ${weeks} týždňami`;
 }
 
+/* ===================== SUPABASE (cloud sync + prihlásenie) =====================
+   Appka teraz ukladá dáta do Supabase (Postgres, EU región) namiesto len localStorage.
+   localStorage sa ale stále používa ako offline cache: každý loadKey/saveKey zapíše
+   aj lokálnu kópiu, takže appka funguje aj bez pripojenia (zobrazí posledné známe dáta,
+   zmeny sa lokálne uložia a nabudúce sa appka pokúsi znova zosynchronizovať).
+   Publishable/anon kľúč je bezpečné mať priamo v kóde — bez prihlásenia (Supabase Auth)
+   a Row Level Security politík na serveri sa cezeň k žiadnym dátam nedostaneš. */
+var SUPABASE_URL = 'https://opxrzhduiijnrpevczpv.supabase.co';
+var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_euM-aG0JRWb4PscQIv5PAA_btJYyQTY';
+var supabaseClient = (typeof window.supabase !== 'undefined')
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+  : null;
+var currentUser = null;
+
+// JS kľúč (ako sa dáta volajú v appke) -> Supabase tabuľka + typ uloženia.
+// "collection" = pole záznamov (každý má vlastné id, jeden riadok v tabuľke na záznam).
+// "singleton"  = jeden objekt na používateľa (napr. nastavenia, cenník).
+var SUPABASE_TABLE_MAP = {
+  clients:   { type:'collection', table:'clients' },
+  bookings:  { type:'collection', table:'bookings' },
+  projects:  { type:'collection', table:'projects' },
+  invoices:  { type:'collection', table:'invoices' },
+  expenses:  { type:'collection', table:'expenses' },
+  vendors:   { type:'collection', table:'vendors' },
+  trash:     { type:'collection', table:'trash' },
+  quickNotes:{ type:'collection', table:'quick_notes' },
+  settings:  { type:'singleton', table:'settings' },
+  pricing:   { type:'singleton', table:'pricing' }
+};
+
+async function initAuthGate(){
+  if(!supabaseClient){
+    showToast('Supabase sa nepodarilo načítať — appka pobeží len lokálne (skontroluj internet)');
+    document.getElementById('authScreen').style.display = 'none';
+    afterAuthReady();
+    return;
+  }
+  const { data } = await supabaseClient.auth.getSession();
+  if(data && data.session){
+    currentUser = data.session.user;
+    setAuthScreenVisible(false);
+    afterAuthReady();
+  }else{
+    setAuthScreenVisible(true);
+  }
+  supabaseClient.auth.onAuthStateChange((event, session)=>{
+    if(event === 'SIGNED_IN' && session){
+      currentUser = session.user;
+      setAuthScreenVisible(false);
+      afterAuthReady();
+    }else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      setAuthScreenVisible(true);
+    }
+  });
+}
+function setAuthScreenVisible(visible){
+  document.getElementById('authScreen').style.display = visible ? 'flex' : 'none';
+  document.getElementById('app-root') && (document.getElementById('app-root').style.display = visible ? 'none' : '');
+}
+async function afterAuthReady(){
+  const emailEl = document.getElementById('auth-current-email');
+  if(emailEl) emailEl.textContent = currentUser ? currentUser.email : '— (offline režim) —';
+
+  // Zachyť staré lokálne dáta PRED prvým načítaním z cloudu — loadAll nižšie ich vie
+  // prepísať prázdnym cloudovým stavom, ak ide o nové/zatiaľ prázdne cloudové konto.
+  // Vďaka tomu vieme po prihlásení ponúknuť jednorazové nahratie doterajších dát do Supabase.
+  const preCloudSnapshot = {};
+  const COLLECTION_KEYS = ['clients','projects','bookings','invoices','expenses','vendors','quickNotes'];
+  COLLECTION_KEYS.forEach(k=>{
+    try{
+      const raw = localStorage.getItem('slate:'+k);
+      preCloudSnapshot[k] = raw ? JSON.parse(raw) : [];
+    }catch(e){ preCloudSnapshot[k] = []; }
+  });
+  ['settings','pricing'].forEach(k=>{
+    try{
+      const raw = localStorage.getItem('slate:'+k);
+      preCloudSnapshot[k] = raw ? JSON.parse(raw) : null;
+    }catch(e){ preCloudSnapshot[k] = null; }
+  });
+
+  checkPinLock();
+  await loadAll();
+
+  if(currentUser) await maybeOfferLocalMigration(preCloudSnapshot, COLLECTION_KEYS);
+}
+async function maybeOfferLocalMigration(preCloudSnapshot, collectionKeys){
+  const cloudIsEmpty = !DATA.clients.length && !DATA.projects.length && !DATA.bookings.length && !DATA.invoices.length;
+  const localHadData = collectionKeys.some(k=>preCloudSnapshot[k] && preCloudSnapshot[k].length);
+  if(!cloudIsEmpty || !localHadData) return;
+  showToast('Našli sme dáta z tohto prehliadača, ktoré ešte nie sú v cloude.', '⬆ Nahrať do cloudu', async ()=>{
+    for(const key of collectionKeys){
+      if(preCloudSnapshot[key] && preCloudSnapshot[key].length){
+        DATA[key] = preCloudSnapshot[key];
+        await saveKey(key, DATA[key]);
+      }
+    }
+    if(preCloudSnapshot.settings){ DATA.settings = Object.assign({}, DEFAULT_SETTINGS, preCloudSnapshot.settings); await saveKey('settings', DATA.settings); }
+    if(preCloudSnapshot.pricing){ PRICING = Object.assign({}, DEFAULT_PRICING, preCloudSnapshot.pricing); await saveKey('pricing', PRICING); }
+    showToast('Doterajšie dáta nahrané do cloudu ✓');
+    fillSettingsForm(); fillPricingForm(); renderAll();
+  });
+}
+async function authSignIn(){
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.style.display = 'none';
+  if(!email || !password){ errEl.textContent = 'Zadaj e-mail aj heslo.'; errEl.style.display = 'block'; return; }
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = 'Prihlásenie zlyhalo: nesprávny e-mail alebo heslo.'; errEl.style.display = 'block'; }
+}
+async function authSignUp(){
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  const infoEl = document.getElementById('auth-info');
+  errEl.style.display = 'none'; infoEl.style.display = 'none';
+  if(!email || !password){ errEl.textContent = 'Zadaj e-mail aj heslo.'; errEl.style.display = 'block'; return; }
+  if(password.length < 8){ errEl.textContent = 'Heslo musí mať aspoň 8 znakov.'; errEl.style.display = 'block'; return; }
+  const { data, error } = await supabaseClient.auth.signUp({ email, password });
+  if(error){ errEl.textContent = 'Registrácia zlyhala: ' + error.message; errEl.style.display = 'block'; return; }
+  if(data && data.session){ return; } // niektoré projekty prihlásia rovno bez potvrdenia e-mailu
+  infoEl.textContent = 'Účet vytvorený — over si e-mail a potvrď ho, potom sa prihlás.';
+  infoEl.style.display = 'block';
+}
+async function authSignOut(){
+  if(supabaseClient) await supabaseClient.auth.signOut();
+}
+
 /* ===================== STORAGE ===================== */
 async function loadKey(key, fallback){
+  const map = SUPABASE_TABLE_MAP[key];
+  if(map && supabaseClient && currentUser){
+    try{
+      if(map.type === 'collection'){
+        const { data, error } = await supabaseClient.from(map.table).select('data').order('created_at', { ascending:true });
+        if(error) throw error;
+        const value = (data||[]).map(row=>row.data);
+        try{ localStorage.setItem('slate:'+key, JSON.stringify(value)); }catch(e){}
+        return value;
+      }else{
+        const { data, error } = await supabaseClient.from(map.table).select('data').eq('user_id', currentUser.id).maybeSingle();
+        if(error) throw error;
+        const value = data ? data.data : fallback;
+        try{ localStorage.setItem('slate:'+key, JSON.stringify(value)); }catch(e){}
+        return value;
+      }
+    }catch(e){
+      showToast('⚠️ Nepodarilo sa načítať dáta z cloudu — zobrazujem posledné uložené lokálne');
+      // padá na lokálnu cache nižšie
+    }
+  }
   try{
     const raw = localStorage.getItem('slate:'+key);
     if(raw !== null){ return JSON.parse(raw); }
     return fallback;
   }catch(e){ return fallback; }
 }
+async function syncCollectionToSupabase(table, items){
+  const ids = items.map(it=>it && it.id).filter(Boolean);
+  const { data: existing, error: selErr } = await supabaseClient.from(table).select('id');
+  if(selErr) throw selErr;
+  const existingIds = (existing||[]).map(r=>r.id);
+  const toDelete = existingIds.filter(id=>!ids.includes(id));
+  if(toDelete.length){
+    const { error: delErr } = await supabaseClient.from(table).delete().in('id', toDelete);
+    if(delErr) throw delErr;
+  }
+  if(items.length){
+    const rows = items.filter(it=>it && it.id).map(it=>({ id: it.id, data: it }));
+    if(rows.length){
+      const { error: upErr } = await supabaseClient.from(table).upsert(rows, { onConflict:'id' });
+      if(upErr) throw upErr;
+    }
+  }
+}
 async function saveKey(key, value){
   try{ localStorage.setItem('slate:'+key, JSON.stringify(value)); }
   catch(e){ showToast('Chyba pri ukladaní dát (možno je pamäť prehliadača plná)'); }
+
+  const map = SUPABASE_TABLE_MAP[key];
+  if(map && supabaseClient && currentUser){
+    try{
+      if(map.type === 'collection'){
+        await syncCollectionToSupabase(map.table, Array.isArray(value) ? value : []);
+      }else{
+        const { error } = await supabaseClient.from(map.table).upsert({ user_id: currentUser.id, data: value }, { onConflict:'user_id' });
+        if(error) throw error;
+      }
+    }catch(e){
+      showToast('⚠️ Zmena sa neuložila do cloudu (over pripojenie) — je uložená aspoň lokálne v tomto prehliadači');
+    }
+  }
   writeAutoBackup();
 }
 async function loadAll(){

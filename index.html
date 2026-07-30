@@ -15,8 +15,22 @@
 <link rel="stylesheet" href="css/styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
+<div id="authScreen" style="display:none;">
+  <div class="pin-lock-box">
+    <div class="brand-mark" style="width:48px;height:48px;margin:0 auto 16px;"></div>
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;margin:0 0 6px;text-align:center;">SLATE</h2>
+    <p class="row-sub" style="text-align:center;margin-bottom:18px;">Prihlás sa, aby si videl svoje dáta</p>
+    <input id="auth-email" type="email" placeholder="E-mail" autocomplete="username" style="margin-bottom:10px;">
+    <input id="auth-password" type="password" placeholder="Heslo" autocomplete="current-password">
+    <button id="auth-signin-btn" class="btn" style="width:100%;margin-top:14px;justify-content:center;" onclick="authSignIn()">Prihlásiť sa</button>
+    <button id="auth-signup-btn" class="btn ghost" style="width:100%;margin-top:8px;justify-content:center;" onclick="authSignUp()">Vytvoriť účet (prvé spustenie)</button>
+    <p id="auth-error" class="row-sub" style="text-align:center;margin-top:10px;color:#ff4d4d;display:none;"></p>
+    <p id="auth-info" class="row-sub" style="text-align:center;margin-top:10px;display:none;"></p>
+  </div>
+</div>
 <div id="pinLockScreen" style="display:none;">
   <div class="pin-lock-box">
     <div class="brand-mark" style="width:48px;height:48px;margin:0 auto 16px;"></div>
@@ -27,7 +41,7 @@
     <p id="pin-unlock-error" class="row-sub" style="text-align:center;margin-top:10px;color:#ff4d4d;display:none;">Nesprávny PIN, skús znova.</p>
   </div>
 </div>
-<div class="app">
+<div class="app" id="app-root" style="display:none;">
   <div class="sidebar">
     <div class="brand">
       <div class="brand-mark"></div>
@@ -583,8 +597,14 @@
         </div>
 
         <div class="panel">
+          <h3>☁️ Účet a cloud</h3>
+          <p class="row-sub" style="margin-bottom:10px;">Prihlásený ako <b id="auth-current-email" style="color:var(--text);">—</b>. Dáta sú uložené v Supabase (šifrovane, len pre teba) a synchronizujú sa naprieč zariadeniami.</p>
+          <button class="btn ghost" onclick="authSignOut()">Odhlásiť sa</button>
+        </div>
+
+        <div class="panel">
           <h3>🔒 Zabezpečenie</h3>
-          <p class="row-sub" style="margin-bottom:12px;">Appka obsahuje osobné údaje klientov — PIN kód pridá jednoduchú ochranu, keď appku otváraš na zdieľanom zariadení alebo ju niekomu ukazuješ. <b style="color:var(--text);">Nie je to silné zabezpečenie</b> (dáta ostávajú v prehliadači), len clona pred náhodným nazretím.</p>
+          <p class="row-sub" style="margin-bottom:12px;">PIN kód pridá jednoduchú ochranu navyše, keď appku niekomu ukazuješ alebo ju necháš otvorenú na zdieľanom zariadení. <b style="color:var(--text);">Toto nie je hlavné zabezpečenie</b> — to rieši prihlásenie vyššie — len clona pred náhodným nazretím.</p>
           <div id="pin-not-set" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <input id="pin-new-input" type="password" inputmode="numeric" maxlength="6" placeholder="Nový PIN (4–6 čísel)" style="max-width:200px;">
             <button class="btn ghost" onclick="setAppPin()">Nastaviť PIN</button>
