@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<title>SLATE – Produkčný manažér</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SLATE">
+<meta name="theme-color" content="#000000">
+<meta name="format-detection" content="telephone=no">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+</head>
+<body>
+<div id="pinLockScreen" style="display:none;">
+  <div class="pin-lock-box">
+    <div class="brand-mark" style="width:48px;height:48px;margin:0 auto 16px;"></div>
+    <h2 style="font-family:'Bebas Neue',sans-serif;font-size:28px;margin:0 0 6px;text-align:center;">SLATE je zamknutá</h2>
+    <p class="row-sub" style="text-align:center;margin-bottom:18px;">Zadaj PIN kód</p>
+    <input id="pin-unlock-input" type="password" inputmode="numeric" maxlength="6" autocomplete="off" style="text-align:center;font-size:22px;letter-spacing:8px;">
+    <button class="btn" style="width:100%;margin-top:14px;justify-content:center;" onclick="attemptUnlock()">Odomknúť</button>
+    <p id="pin-unlock-error" class="row-sub" style="text-align:center;margin-top:10px;color:#ff4d4d;display:none;">Nesprávny PIN, skús znova.</p>
+  </div>
+</div>
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">SLATE</div>
+        <div class="brand-sub">Produkčný manažér</div>
+      </div>
+    </div>
+    <div style="position:relative;padding:0 8px 12px;">
+      <input id="global-search" placeholder="🔍 Hľadať... (Ctrl+K)" style="font-size:13px;padding:8px 10px;" oninput="onGlobalSearchInput()" onfocus="onGlobalSearchInput()">
+      <div id="global-search-results" style="display:none;position:absolute;top:100%;left:8px;right:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);z-index:60;max-height:340px;overflow-y:auto;"></div>
+    </div>
+    <nav id="nav">
+      <div class="nav-item" style="background:var(--accent-dim);color:var(--accent);border-color:rgba(232,80,2,.3);font-weight:700;margin-bottom:8px;" onclick="event.stopPropagation(); openNewDopytForm();">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        <span>+ Nový dopyt</span>
+      </div>
+      <div class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-6 9 6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        <span>Prehľad</span>
+        <span class="nav-badge" id="navBadgeDashboard" style="display:none;"></span>
+      </div>
+      <div class="nav-item" data-view="calendar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        <span>Kalendár</span>
+        <span class="nav-badge" id="navBadgeCalendar" style="display:none;"></span>
+      </div>
+      <div class="nav-item" data-view="clients">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6M16 8.5a3 3 0 1 1 4 2.8M21 20c0-2.8-1.7-4.7-4-5.4"/></svg>
+        <span>Klienti</span>
+      </div>
+      <div class="nav-item" data-view="projects">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6l2 3h8v11a2 2 0 0 1-2 2H4z"/></svg>
+        <span>Zákazky</span>
+        <span class="nav-badge" id="navBadgeProjects" style="display:none;"></span>
+      </div>
+      <div class="nav-item" data-view="invoices">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        <span>Faktúry</span>
+        <span class="nav-badge" id="navBadgeInvoices" style="display:none;"></span>
+      </div>
+      <div class="nav-item" data-view="pricing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>Cenotvorba</span>
+      </div>
+      <div class="nav-item" data-view="hours">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <span>Hodiny</span>
+      </div>
+      <div class="nav-item" data-view="expenses">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l4-8h10l4 8-9 9-9-9z"/><path d="M3 12h18"/></svg>
+        <span>Náklady</span>
+      </div>
+      <div class="nav-item" data-view="vendors">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg>
+        <span>Dodávatelia</span>
+      </div>
+      <div class="nav-item" data-view="trash">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+        <span>Kôš</span>
+        <span class="nav-badge nav-badge-amber" id="navBadgeTrash" style="display:none;"></span>
+      </div>
+      <div class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15 1.65 1.65 0 0 0 3.09 14H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.13.63.51 1.18 1.51 1.51H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Nastavenia</span>
+        <span class="nav-badge" id="navBadgeSettings" style="display:none;"></span>
+      </div>
+    </nav>
+    <button type="button" id="themeToggleBtn" onclick="toggleTheme()" class="btn ghost small" style="margin:8px 4px;justify-content:center;">🎨 Iný dizajn</button>
+    <div class="sidebar-foot">Dáta sa ukladajú priamo v tomto prehliadači/zariadení. Medzi zariadeniami ich prenášaj cez Nastavenia → Záloha.</div>
+  </div>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="panel" id="installBanner" style="display:none;margin-bottom:16px;border-color:var(--accent);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:var(--text-dim);">📲 Tip: klikni <b style="color:var(--text);">Zdieľať → Pridať na plochu</b> a appka sa ti otvorí ako plnohodnotná ikonka, na celú obrazovku, bez prehliadača.</div>
+          <button class="btn ghost small" onclick="dismissInstallBanner()">Rozumiem</button>
+        </div>
+      </div>
+      <div class="panel" id="mobileQuickRestoreBanner" style="display:none;margin-bottom:16px;border-color:var(--blue-page);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:var(--text-dim);">📲 Tento prehliadač nevie zálohu načítať automaticky. Ak si od iného zariadenia niečo pridal, klikni pre rýchle načítanie najnovšej zálohy z iCloud/súboru.</div>
+          <button class="btn ghost small" onclick="document.getElementById('restoreFile').click()">⬆ Obnoviť zo zálohy</button>
+        </div>
+      </div>
+      <div class="panel panel-attention" id="backupReminderBanner" style="display:none;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div style="font-size:13px;color:var(--text-dim);" id="backupReminderText">⚠️ Ešte si nemáš nastavenú žiadnu zálohu — nastav si ju v Nastaveniach, nech o dáta neprídeš.</div>
+          <button class="btn ghost small" onclick="document.querySelector('.nav-item[data-view=settings]').click();">Nastaviť zálohu</button>
+        </div>
+      </div>
+      <div class="slate">
+        <div class="slate-top"></div>
+        <div class="slate-body">
+          <div class="slate-field">
+            <div class="slate-label">Produkcia</div>
+            <input class="slate-value name-input" id="companyNameInput" value="Moja produkcia" />
+          </div>
+          <div class="slate-field">
+            <div class="slate-label">Dátum</div>
+            <div class="slate-value" id="todayDate">–</div>
+          </div>
+          <div class="slate-field">
+            <div class="slate-label">Dnes</div>
+            <div class="slate-value big" id="todayCount">0</div>
+          </div>
+          <div class="slate-field">
+            <div class="slate-label">Aktívne zákazky</div>
+            <div class="slate-value big" id="activeCount">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-stats">
+        <div class="stat-card"><div class="stat-num" id="statClients">0</div><div class="stat-label">Klienti spolu</div></div>
+        <div class="stat-card"><div class="stat-num" id="statBookings">0</div><div class="stat-label">Rezervácie tento mesiac</div></div>
+        <div class="stat-card"><div class="stat-num" id="statUnpaid">0 €</div><div class="stat-label">Neuhradené faktúry</div></div>
+        <div class="stat-card"><div class="stat-num" id="statPaid">0 €</div><div class="stat-label">Uhradené tento mesiac</div></div>
+      </div>
+
+      <div class="bento-grid">
+        <div class="panel bento-tile-bookings">
+          <h3>📅 Najbližšie rezervácie</h3>
+          <div id="upcomingBookings"></div>
+        </div>
+        <div class="panel bento-tile-projects">
+          <h3>⏳ Zákazky s blížiacim sa termínom</h3>
+          <div id="upcomingProjects"></div>
+        </div>
+        <div class="panel bento-tile-messages" id="missingMessagesPanel">
+          <h3 style="margin-bottom:12px;">📨 Chýbajúce správy klientom</h3>
+          <div id="missingMessagesList"></div>
+        </div>
+        <div class="panel bento-tile-weather">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+            <h3 style="margin:0;">🌦️ Počasie — svadby do 10 dní</h3>
+            <button class="btn ghost small" onclick="loadWeatherForecasts()">🔄</button>
+          </div>
+          <div id="weatherForecastList"><div class="empty">Predpoveď sa načíta automaticky, ak máš svadbu do 10 dní (🔄 = ručné obnovenie, vyžaduje internet).</div></div>
+        </div>
+        <div class="panel bento-tile-anniv">
+          <h3>💐 Výročia svadieb</h3>
+          <div id="anniversariesList"></div>
+        </div>
+        <div class="panel bento-tile-notes">
+          <h3>📝 Rýchle poznámky</h3>
+          <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <input id="quick-note-input" placeholder="napr. kúpiť mikrofón..." style="flex:1;">
+            <button class="btn ghost small" onclick="addQuickNote()">+</button>
+          </div>
+          <div id="quickNotesList"></div>
+        </div>
+        <div class="panel bento-tile-yearly">
+          <h3 id="yearlySummaryTitle">Ročný súhrn</h3>
+          <div id="yearlySummary"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="view" id="view-calendar">
+      <div class="topbar">
+        <div><h1 class="page-title">Kalendár</h1><div class="page-sub">Dostupnosť a rezervácie klientov</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost" onclick="syncProjectsToCalendar()">🔄 Naimportovať dátumy zo zákaziek</button>
+          <button class="btn ghost" onclick="exportICS()">📅 Exportovať do Apple Kalendára (.ics)</button>
+          <button class="btn" onclick="openBookingModal()">+ Nová rezervácia</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="min-width:160px;flex:1;">
+            <label>Klient</label>
+            <select id="cal-filter-client" onchange="onCalFilterChange()"><option value="">Všetci</option></select>
+          </div>
+          <div style="min-width:160px;flex:1;">
+            <label>Stav</label>
+            <select id="cal-filter-status" onchange="onCalFilterChange()">
+              <option value="">Všetky</option>
+              <option value="dopyt">Dopyt</option>
+              <option value="potvrdene">Potvrdené</option>
+              <option value="natacanie">Natáčanie</option>
+              <option value="hotovo">Hotovo</option>
+            </select>
+          </div>
+          <div style="min-width:160px;flex:1;">
+            <label>Tag</label>
+            <input id="cal-filter-tag" placeholder="napr. svadba, dron..." oninput="onCalFilterChange()">
+          </div>
+          <button class="btn ghost small" style="height:38px;" onclick="clearCalFilters()">Vymazať filtre</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="cal-head">
+          <div class="cal-nav"><button class="icon-btn" onclick="calShift(-1)">‹</button></div>
+          <div class="cal-month" id="calMonthLabel"></div>
+          <div class="cal-nav">
+            <button class="btn ghost small" onclick="goToToday()">Dnes</button>
+            <button class="icon-btn" onclick="calShift(1)">›</button>
+          </div>
+        </div>
+        <p class="row-sub" style="margin:2px 0 10px;">💡 Rezerváciu vieš presunúť na iný deň potiahnutím (drag & drop).</p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11.5px;color:var(--text-dim);">
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#e0568a,#b8355f);display:inline-block;"></span>Svadba</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#3d8fe0,#2569b0);display:inline-block;"></span>Stužková</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#e0c828,#b89f1a);display:inline-block;"></span>Klip</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;border:1px solid var(--accent);box-shadow:0 0 6px rgba(232,80,2,.5);display:inline-block;"></span>Dnes</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #ff8a00;box-shadow:0 0 6px rgba(255,138,0,.5);display:inline-block;"></span>Do 3 dní</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <h3 id="dayAgendaTitle">Vyber deň v kalendári</h3>
+        <div id="dayAgendaList"></div>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div class="view" id="view-clients">
+      <div class="topbar">
+        <div><h1 class="page-title">Klienti</h1><div class="page-sub">Databáza kontaktov a história spolupráce</div></div>
+        <button class="btn" onclick="openClientModal()">+ Nový klient</button>
+      </div>
+      <div class="search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="clientSearch" placeholder="Hľadať klienta..." oninput="renderClients()">
+      </div>
+      <div class="panel"><div id="clientsList"></div></div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="view" id="view-projects">
+      <div class="topbar">
+        <div><h1 class="page-title">Zákazky</h1><div class="page-sub">Stav produkcie jednotlivých projektov</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost" onclick="exportProjectsCsv()">📊 Export pre Excel</button>
+          <button class="btn ghost" onclick="openGoogleFormModal()">📋 Google formulár</button>
+          <button class="btn ghost" onclick="openImportModal()">⬆ Importovať z Pripomienok</button>
+          <button class="btn" onclick="openProjectModal()">+ Nová zákazka</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="quickFilterBar">
+        <button class="btn ghost small quick-filter-btn" data-tag="" data-year="" onclick="setQuickFilter('', '', this)">Všetko</button>
+        <button class="btn ghost small quick-filter-btn" data-tag="klip" data-year="" onclick="setQuickFilter('klip', '', this)">Klipy</button>
+        <button class="btn ghost small quick-filter-btn" data-tag="svadba" data-year="2026" onclick="setQuickFilter('svadba', '2026', this)">Svadby 2026</button>
+        <button class="btn ghost small quick-filter-btn" data-tag="svadba" data-year="2027" onclick="setQuickFilter('svadba', '2027', this)">Svadby 2027</button>
+        <button class="btn ghost small quick-filter-btn" data-tag="stuzkova" data-year="2026" onclick="setQuickFilter('stuzkova', '2026', this)">Stužkové 2026</button>
+        <button class="btn ghost small quick-filter-btn" data-tag="stuzkova" data-year="2027" onclick="setQuickFilter('stuzkova', '2027', this)">Stužkové 2027</button>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="min-width:160px;flex:1;">
+            <label>Klient</label>
+            <select id="pr-filter-client" onchange="onProjectFilterChange()"><option value="">Všetci</option></select>
+          </div>
+          <div style="min-width:160px;flex:1;">
+            <label>Tag</label>
+            <input id="pr-filter-tag" placeholder="napr. svadba, balik-a, kradnutie..." oninput="onProjectFilterChange()">
+          </div>
+          <div style="min-width:160px;flex:1;">
+            <label>Zoradiť podľa</label>
+            <select id="pr-sort" onchange="onProjectFilterChange()">
+              <option value="deadline-asc">Termín — najbližšie hore</option>
+              <option value="deadline-desc">Termín — najneskôr hore</option>
+              <option value="name-asc">Názov A–Z</option>
+              <option value="budget-desc">Cena — najvyššia hore</option>
+              <option value="budget-asc">Cena — najnižšia hore</option>
+            </select>
+          </div>
+          <button class="btn ghost small" style="height:38px;" onclick="clearProjectFilters()">Vymazať filtre</button>
+        </div>
+      </div>
+
+      <div class="status-tabs" id="statusTabs"></div>
+      <div class="projects-grid" id="projectsGrid"></div>
+    </div>
+
+    <!-- INVOICES -->
+    <div class="view" id="view-invoices">
+      <div class="topbar">
+        <div><h1 class="page-title">Fakturácia</h1><div class="page-sub">Prehľad platieb za zákazky</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost" onclick="exportInvoicesCsv()">📊 Export pre Excel</button>
+          <button class="btn" onclick="openInvoiceModal()">+ Nová faktúra</button>
+        </div>
+      </div>
+      <div class="grid-stats">
+        <div class="stat-card"><div class="stat-num" id="invUnpaidTotal">0 €</div><div class="stat-label">Neuhradené</div></div>
+        <div class="stat-card"><div class="stat-num" id="invPaidTotal">0 €</div><div class="stat-label">Uhradené</div></div>
+        <div class="stat-card"><div class="stat-num" id="invCountTotal">0</div><div class="stat-label">Počet faktúr</div></div>
+        <div class="stat-card" id="invOverdueCard"><div class="stat-num" id="invOverdueCount" style="color:#e05656;">0</div><div class="stat-label">Po splatnosti</div></div>
+      </div>
+      <div class="panel">
+        <div id="invoiceBulkBar" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;">
+          <span id="invoiceBulkCount" style="font-weight:600;font-size:13px;"></span>
+          <button class="btn ghost small" onclick="bulkMarkInvoicesPaid()">✓ Označiť ako uhradené</button>
+          <button class="btn ghost small" onclick="clearInvoiceSelection()">Zrušiť výber</button>
+        </div>
+        <table>
+          <thead><tr>
+            <th style="width:26px;"><input type="checkbox" id="invoiceSelectAll" onchange="toggleSelectAllInvoices(this.checked)"></th>
+            <th>Faktúra</th><th>Typ</th><th>Klient</th><th>Suma</th><th>Splatnosť</th><th>Stav</th>
+          </tr></thead>
+          <tbody id="invoicesTable"></tbody>
+        </table>
+        <div class="empty" id="invoicesEmpty" style="display:none;">Zatiaľ žiadne faktúry.</div>
+      </div>
+    </div>
+
+    <!-- PRICING -->
+    <div class="view" id="view-pricing">
+      <div class="topbar">
+        <div><h1 class="page-title">Cenotvorba</h1><div class="page-sub">Balíky, cesta mimo okresu a príplatky</div></div>
+      </div>
+
+      <div class="panel" style="margin-bottom:20px;">
+        <h3>💶 Kalkulačka — naceniť zákazku</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Poskladaj si cenu pred tým, než založíš zákazku, alebo len na rýchlu odpoveď klientovi.</p>
+        <div class="field-row">
+          <div><label>Typ zákazky</label>
+            <select id="calc-type" onchange="recalcCalculator()">
+              <option value="">— nevybraté —</option>
+              <option value="svadba">Svadba</option>
+              <option value="stuzkova">Stužková</option>
+              <option value="klip">Klip</option>
+            </select>
+          </div>
+          <div><label>Balík</label><select id="calc-balik" onchange="recalcCalculator()"></select></div>
+        </div>
+        <div class="field-row" style="margin-top:10px;">
+          <div><label>Rok konania</label><input type="number" id="calc-year" placeholder="napr. 2026" oninput="recalcCalculator()"></div>
+          <div></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);margin:10px 0 0;">
+          <input type="checkbox" id="calc-mimo-okresu" style="width:auto;" onchange="recalcCalculator()"> Mimo môjho okresu (pripočítať cestu)
+        </label>
+        <div class="field-row" id="calc-km-row" style="display:none;margin-top:10px;">
+          <div><label>Vzdialenosť (km, tam aj späť)</label><input type="number" id="calc-km" placeholder="0" oninput="recalcCalculator()"></div>
+          <div><label>Cesta (€)</label><input type="text" id="calc-cesta-label" class="num" disabled></div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>Príplatky</label>
+          <div id="calc-priplatky-checks" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div class="row-sub" id="calc-breakdown-text" style="margin-bottom:4px;"></div>
+            <div style="font-size:22px;font-weight:700;">Spolu: <span id="calc-total" class="num" style="color:var(--accent);">0 €</span></div>
+          </div>
+          <button class="btn" onclick="createProjectFromCalculator()">+ Založiť zákazku s touto cenou</button>
+        </div>
+      </div>
+
+      <div class="cols-2">
+        <div class="panel">
+          <h3>📦 Balíky</h3>
+          <p class="row-sub" style="margin-bottom:12px;">Základná cena podľa balíka (A/B/C) — použije sa, ak pre daný rok nemáš nastavenú vlastnú cenu nižšie.</p>
+          <div id="balicky-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button class="btn ghost small" style="margin-top:12px;" onclick="addBalikRow()">+ Pridať balík</button>
+        </div>
+
+        <div class="panel">
+          <h3>🚗 Cesta mimo okresu</h3>
+          <p class="row-sub" style="margin-bottom:12px;">Ak zákazka (kostol/nevesta/ženích) je mimo tvojho okresu, appka pripočíta vzdialenosť (km) × sadzba.</p>
+          <div class="field-row">
+            <div><label>Sadzba (€/km)</label><input type="number" step="0.01" id="pricing-km-rate" placeholder="0.30"></div>
+            <div><label>Tvoj domáci okres (info)</label><input id="pricing-home-district" placeholder="napr. Bardejov"></div>
+          </div>
+          <button class="btn ghost small" style="margin-top:12px;" onclick="savePricingBase()">Uložiť</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>🗓️ Cenník podľa roku</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Iný rok, iná cena balíka — napr. v roku 2027 zdraž balík A na 450€. Appka si pri zákazke automaticky vyberie cenu podľa roku jej dátumu; ak pre daný rok nič nenastavíš, použije sa základná cena balíka vyššie.</p>
+        <div class="field-row">
+          <div><label>Rok</label><input type="number" id="yp-year" placeholder="napr. 2027"></div>
+          <div><label>Balík</label><select id="yp-balik"></select></div>
+        </div>
+        <div class="field-row" style="margin-top:10px;">
+          <div><label>Cena pre daný rok (€)</label><input type="number" id="yp-price" placeholder="0"></div>
+          <div style="display:flex;align-items:flex-end;"><button class="btn ghost small" onclick="addYearPriceRow()">+ Pridať / upraviť</button></div>
+        </div>
+        <div id="year-pricing-list" style="display:flex;flex-direction:column;gap:8px;margin-top:14px;"></div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>➕ Príplatkové veci</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Doplnkové položky, ktoré si vyberáš pri konkrétnej zákazke (napr. dron, 2. kamera, kradnutie).</p>
+        <div id="priplatky-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <button class="btn ghost small" style="margin-top:12px;" onclick="addPriplatokRow()">+ Pridať príplatok</button>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>📊 Grafy</h3>
+        <div class="cols-2">
+          <div>
+            <p class="row-sub" style="margin-bottom:8px;">Tržby podľa mesiaca</p>
+            <canvas id="chartRevenueMonth" height="220"></canvas>
+          </div>
+          <div>
+            <p class="row-sub" style="margin-bottom:8px;">Tržby podľa balíka</p>
+            <canvas id="chartRevenueBalik" height="220"></canvas>
+          </div>
+        </div>
+        <div style="margin-top:24px;">
+          <p class="row-sub" style="margin-bottom:8px;">Tržby podľa typu zákazky</p>
+          <canvas id="chartRevenueType" height="180"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOURS -->
+    <div class="view" id="view-hours">
+      <div class="topbar">
+        <div><h1 class="page-title">Hodiny</h1><div class="page-sub">Koľko reálne pracuješ na jednotlivých zákazkách</div></div>
+      </div>
+
+      <div class="grid-stats">
+        <div class="stat-card"><div class="stat-num" id="hoursTotalAll">0 h</div><div class="stat-label">Odpracované spolu</div></div>
+        <div class="stat-card"><div class="stat-num" id="hoursTotalMonth">0 h</div><div class="stat-label">Tento mesiac</div></div>
+        <div class="stat-card"><div class="stat-num" id="hoursTotalYear">0 h</div><div class="stat-label">Tento rok</div></div>
+        <div class="stat-card"><div class="stat-num" id="hoursAvgRate">0 €</div><div class="stat-label">Priemerná €/hodinu</div></div>
+      </div>
+
+      <div class="bento-grid bento-grid-hours">
+        <div class="panel bento-tile-hmonth">
+          <h3>📈 Odpracované hodiny podľa mesiaca</h3>
+          <canvas id="chartHoursMonth" height="180"></canvas>
+        </div>
+        <div class="panel bento-tile-htype">
+          <h3>🥧 Hodiny podľa typu zákazky</h3>
+          <canvas id="chartHoursType" height="180"></canvas>
+        </div>
+        <div class="panel bento-tile-htable">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="hoursQuickFilterBar">
+            <button class="btn ghost small hours-filter-btn active" data-type="" onclick="setHoursFilter('', this)">Všetko</button>
+            <button class="btn ghost small hours-filter-btn" data-type="svadba" onclick="setHoursFilter('svadba', this)">💍 Svadby</button>
+            <button class="btn ghost small hours-filter-btn" data-type="stuzkova" onclick="setHoursFilter('stuzkova', this)">🎓 Stužkové</button>
+            <button class="btn ghost small hours-filter-btn" data-type="klip" onclick="setHoursFilter('klip', this)">🎬 Klipy</button>
+          </div>
+          <h3>📋 Podľa zákazky</h3>
+          <p class="row-sub" style="margin:-6px 0 12px;">🟢 výrazne nad priemernou sadzbou · 🔴 výrazne pod priemernou sadzbou — pomôže ti to vidieť, ktoré balíky sa reálne oplatia.</p>
+          <table>
+            <thead><tr><th>Zákazka</th><th>Klient</th><th>Hodiny</th><th>Rozpočet</th><th>€ / hodinu</th></tr></thead>
+            <tbody id="hoursByProjectTable"></tbody>
+          </table>
+          <div class="empty" id="hoursEmpty" style="display:none;">Zatiaľ nemáš zaznamenané žiadne odpracované hodiny — pridaj zápisy priamo pri zákazke.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div class="view" id="view-expenses">
+      <div class="topbar">
+        <div><h1 class="page-title">Náklady</h1><div class="page-sub">Výdavky, aby si videl skutočný zisk, nie len obrat</div></div>
+        <button class="btn" onclick="openExpenseModal()">+ Nový náklad</button>
+      </div>
+
+      <div class="grid-stats">
+        <div class="stat-card"><div class="stat-num" id="expTotalAll">0 €</div><div class="stat-label">Náklady spolu</div></div>
+        <div class="stat-card"><div class="stat-num" id="expTotalMonth">0 €</div><div class="stat-label">Tento mesiac</div></div>
+        <div class="stat-card"><div class="stat-num" id="expTotalYear">0 €</div><div class="stat-label">Tento rok</div></div>
+        <div class="stat-card"><div class="stat-num" id="expNetProfit">0 €</div><div class="stat-label">Čistý zisk (tento rok)</div></div>
+      </div>
+
+      <div class="bento-grid bento-grid-expenses">
+        <div class="panel bento-tile-echart">
+          <h3>🥧 Náklady podľa kategórie</h3>
+          <canvas id="chartExpensesCategory" height="180"></canvas>
+        </div>
+        <div class="panel bento-tile-etable">
+          <h3>📋 Zoznam nákladov</h3>
+          <table>
+            <thead><tr><th>Dátum</th><th>Kategória</th><th>Popis</th><th>Zákazka</th><th>Suma</th></tr></thead>
+            <tbody id="expensesTable"></tbody>
+          </table>
+          <div class="empty" id="expensesEmpty" style="display:none;">Zatiaľ žiadne náklady.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VENDORS -->
+    <div class="view" id="view-vendors">
+      <div class="topbar">
+        <div><h1 class="page-title">Dodávatelia</h1><div class="page-sub">Fotografi, kapely, DJ-i — s ktorými spolupracuješ</div></div>
+        <button class="btn" onclick="openVendorModal()">+ Nový dodávateľ</button>
+      </div>
+      <div class="search-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="vendorSearch" placeholder="Hľadať dodávateľa..." oninput="renderVendors()">
+      </div>
+      <div class="panel"><div id="vendorsList"></div></div>
+    </div>
+
+    <!-- TRASH -->
+    <div class="view" id="view-trash">
+      <div class="topbar">
+        <div><h1 class="page-title">Kôš</h1><div class="page-sub">Odstránené položky ostávajú tu 30 dní, kým sa natrvalo vymažú (<span id="trashCount">0</span> položiek)</div></div>
+        <button class="btn danger" onclick="emptyTrash()">Vyprázdniť kôš</button>
+      </div>
+      <div class="panel"><div id="trashList"></div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="view" id="view-settings">
+      <div class="topbar">
+        <div><h1 class="page-title">Nastavenia</h1><div class="page-sub">Firemné údaje, šablóna zmluvy a záloha dát</div></div>
+      </div>
+
+      <div class="cols-2">
+        <div class="panel">
+          <h3>🏢 Firemné údaje</h3>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div><label>Názov produkcie</label><input id="set-companyName"></div>
+            <div><label>Meno konateľa / OSVČ</label><input id="set-ownerName"></div>
+            <div><label>Adresa</label><input id="set-address"></div>
+            <div class="field-row">
+              <div><label>IČO</label><input id="set-ico"></div>
+              <div><label>DIČ</label><input id="set-dic"></div>
+            </div>
+            <div><label>IBAN</label><input id="set-iban"></div>
+            <div class="field-row">
+              <div><label>Email</label><input id="set-email" type="email"></div>
+              <div><label>Telefón</label><input id="set-phone"></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);margin:0;">
+              <input type="checkbox" id="set-vatPayer" style="width:auto;" onchange="onVatPayerToggle()"> Som platca DPH
+            </label>
+            <div class="field-row" id="set-vat-rate-row" style="display:none;">
+              <div><label>Predvolená sadzba DPH (%)</label><input type="number" id="set-defaultVatRate" placeholder="20"></div>
+            </div>
+            <button class="btn" style="align-self:flex-start;" onclick="saveSettings()">Uložiť údaje</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>🎯 Ročný cieľ príjmu</h3>
+          <p class="row-sub" style="margin-bottom:12px;">Nastav si, koľko chceš tento rok zarobiť (z uhradených faktúr) — appka ti ukáže priebežný postup na Dashboarde.</p>
+          <div class="field-row">
+            <div><label>Cieľ na rok <span id="set-goal-year-label"></span> (€)</label><input type="number" id="set-yearlyGoal" placeholder="napr. 25000"></div>
+          </div>
+          <button class="btn ghost" style="margin-top:10px;" onclick="saveYearlyGoal()">Uložiť cieľ</button>
+        </div>
+
+        <div class="panel">
+          <h3>🔒 Zabezpečenie</h3>
+          <p class="row-sub" style="margin-bottom:12px;">Appka obsahuje osobné údaje klientov — PIN kód pridá jednoduchú ochranu, keď appku otváraš na zdieľanom zariadení alebo ju niekomu ukazuješ. <b style="color:var(--text);">Nie je to silné zabezpečenie</b> (dáta ostávajú v prehliadači), len clona pred náhodným nazretím.</p>
+          <div id="pin-not-set" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <input id="pin-new-input" type="password" inputmode="numeric" maxlength="6" placeholder="Nový PIN (4–6 čísel)" style="max-width:200px;">
+            <button class="btn ghost" onclick="setAppPin()">Nastaviť PIN</button>
+          </div>
+          <div id="pin-is-set" style="display:none;">
+            <p class="row-sub" style="margin-bottom:10px;">🔒 PIN je aktívny.</p>
+            <button class="btn ghost" onclick="lockAppNow()">Zamknúť appku teraz</button>
+            <button class="btn danger" style="margin-left:8px;" onclick="removeAppPin()">Odstrániť PIN</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>💾 Záloha dát</h3>
+          <p class="row-sub" style="margin-bottom:14px;">Ručná záloha — stiahni súbor a nahraj ho na druhom zariadení.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn ghost" onclick="downloadBackup()">⬇ Stiahnuť zálohu (.json)</button>
+            <button class="btn ghost" onclick="document.getElementById('restoreFile').click()">⬆ Obnoviť zo zálohy (prepíše všetko)</button>
+            <input type="file" id="restoreFile" accept="application/json" style="display:none;" onchange="restoreBackup(event)">
+          </div>
+          <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
+          <p class="row-sub" style="margin-bottom:10px;">Pridať pripravený import (klientov + zákazky) k existujúcim dátam, nič sa neprepíše:</p>
+          <button class="btn ghost" onclick="document.getElementById('mergeImportFile').click()">➕ Pridať import (.json)</button>
+          <input type="file" id="mergeImportFile" accept="application/json" style="display:none;" onchange="mergeImportData(event)">
+
+          <div style="border-top:1px solid var(--border);margin:18px 0 14px;"></div>
+
+          <div id="autoBackupSupported" style="display:none;">
+            <h3 style="margin-bottom:6px;">Automatická záloha</h3>
+            <p class="row-sub" style="margin-bottom:12px;">Appka bude sama priebežne ukladať zálohu do súboru, ktorý si vyberieš — pri výbere môžeš prejsť rovno na svoj <b style="color:var(--text);">externý HDD/SSD</b> (ak je pripojený) a záloha sa bude ukladať priamo tam. Alternatívne môžeš vybrať priečinok v <b style="color:var(--text);">iCloud Drive</b>, aby sa súbor sám objavil aj na iPhone (cez appku Súbory).</p>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span class="pill" id="autoBackupStatus" style="background:var(--surface-3);color:var(--text-dim);">Nenastavené</span>
+              <button class="btn ghost small" onclick="pickAutoBackupFile()">📁 Vybrať súbor na automatickú zálohu</button>
+              <button class="btn ghost small" id="grantAccessBtn" style="display:none;" onclick="grantAutoBackupAccess()">🔓 Povoliť prístup</button>
+              <button class="btn danger small" id="disableAutoBackupBtn" style="display:none;" onclick="disableAutoBackup()">Vypnúť</button>
+            </div>
+            <p class="row-sub" style="margin-top:10px;">⚠️ Ak je externý disk odpojený, appka ťa na to upozorní a záloha sa dočasne nebude ukladať — hneď ako disk znova pripojíš, ďalšia zmena sa uloží automaticky.</p>
+          </div>
+          <div id="autoBackupUnsupported" style="display:none;">
+            <h3 style="margin-bottom:6px;">Automatická záloha</h3>
+            <p class="row-sub">Tento prehliadač (napr. Safari) automatickú zálohu do súboru technicky nepodporuje. Použi ručnú zálohu vyššie.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+          <h3 style="margin:0;">🏥 Kontrola dát</h3>
+          <button class="btn ghost small" onclick="renderDataHealthCheck()">🔄 Skontrolovať</button>
+        </div>
+        <p class="row-sub" style="margin-bottom:12px;">Rýchly prehľad vecí, ktoré chýbajú alebo nesedia — klikni na položku pre priamu opravu.</p>
+        <div id="dataHealthCheckResults"></div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>📄 Šablóna zmluvy</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Použi zástupné znaky, ktoré sa pri generovaní PDF automaticky nahradia: {{produkcia}}, {{konatel}}, {{ico}}, {{dic}}, {{adresa}}, {{iban}}, {{klient}}, {{nazov_zakazky}}, {{termin}}, {{rozpocet}}, {{datum_dnes}}<br>Pri svadbách naviac: {{nevesta}}, {{nevesta_adresa}}, {{zenich}}, {{zenich_adresa}}, {{svadba_miesto}}, {{sobas_kostol}}, {{sobas_adresa}}, {{sobas_typ}}, {{sobas_cas}}, {{hudba_typ}}, {{hudba}}, {{fotograf}}, {{balik}}</p>
+        <textarea id="set-contractTemplate" style="min-height:260px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6;"></textarea>
+        <button class="btn" style="margin-top:12px;" onclick="saveSettings()">Uložiť šablónu</button>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>📁 Priečinok pre zákazky</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Vyber alebo vytvor priečinok (napr. <b style="color:var(--text);">CRM</b> na ploche). Appka doňho automaticky uloží PDF zmluvy a faktúry, každú zákazku do vlastného podpriečinka.</p>
+        <div id="crmFolderSupported" style="display:none;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="pill" id="crmFolderStatus" style="background:var(--surface-3);color:var(--text-dim);">Nenastavené</span>
+            <button class="btn ghost small" onclick="pickCrmFolder()">📁 Vybrať / vytvoriť priečinok</button>
+            <button class="btn ghost small" id="grantFolderAccessBtn" style="display:none;" onclick="grantCrmFolderAccess()">🔓 Povoliť prístup</button>
+            <button class="btn danger small" id="disableCrmFolderBtn" style="display:none;" onclick="disableCrmFolder()">Vypnúť</button>
+          </div>
+        </div>
+        <div id="crmFolderUnsupported" style="display:none;">
+          <p class="row-sub">Tento prehliadač (napr. Safari) toto nepodporuje — PDF sa budú len sťahovať ručne.</p>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>🧾 Šablóna faktúry</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Zástupné znaky: {{cislo_faktury}}, {{klient}}, {{suma}}, {{splatnost}}, {{nazov_zakazky}}, {{produkcia}}, {{konatel}}, {{ico}}, {{dic}}, {{adresa}}, {{iban}}, {{datum_dnes}}</p>
+        <textarea id="set-invoiceTemplate" style="min-height:200px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6;"></textarea>
+        <button class="btn" style="margin-top:12px;" onclick="saveSettings()">Uložiť šablónu</button>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>🗓️ Šablóna harmonogramu dňa (svadba)</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Časy príchodu a hostiny sa počítajú automaticky podľa času sobáša (1h pred = príprava, 1h30min po = hostina). Zástupné znaky: {{nazov_zakazky}}, {{termin}}, {{nevesta}}, {{zenich}}, {{sobas_cas}}, {{sobas_kostol}}, {{svadba_miesto}}, {{hudba}}, {{fotograf}}, {{cas_prichodu}}, {{cas_prijmu}}, {{special_priania}}</p>
+        <textarea id="set-dayScheduleTemplate" style="min-height:220px;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.6;"></textarea>
+        <button class="btn" style="margin-top:12px;" onclick="saveSettings()">Uložiť šablónu</button>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+          <h3 style="margin:0;">💬 Šablóny WhatsApp správ</h3>
+          <button class="btn ghost small" onclick="openMessageTemplateModal()">+ Nová šablóna</button>
+        </div>
+        <p class="row-sub" style="margin-bottom:12px;">Hotové texty na rýchle odoslanie klientovi (potvrdenie, pripomienka, poďakovanie...). Zástupné znaky: {{meno}}, {{nazov_zakazky}}, {{termin}}, {{firma}}, {{konatel}}.</p>
+        <div id="messageTemplatesList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+    </div>
+
+    <!-- PROJECT FORM (full page — used for both "+ Nový dopyt" and editing an existing zákazka) -->
+    <div class="view" id="view-projectform">
+      <div class="topbar">
+        <div><h1 class="page-title" id="projectFormTitle">Nová zákazka</h1><div class="page-sub">Vyplň všetky informácie k zákazke na jednom mieste</div></div>
+        <button class="btn ghost" onclick="closeProjectForm()">← Späť na Zákazky</button>
+      </div>
+
+      <input type="hidden" id="pr-id">
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="field-row">
+          <div><label>Názov zákazky</label><input id="pr-title" placeholder="napr. Svadba Nováková"></div>
+          <div><label>Dátum</label><input type="date" id="pr-deadline" oninput="onPriceInputsChange()"></div>
+        </div>
+        <div class="field-row" style="margin-top:10px;">
+          <div><label>Typ zákazky</label>
+            <select id="pr-type" onchange="onProjectTypeChange()">
+              <option value="">— nevybraté —</option>
+              <option value="svadba">Svadba</option>
+              <option value="stuzkova">Stužková</option>
+              <option value="klip">Klip</option>
+              <option value="ine">Iné</option>
+            </select>
+          </div>
+          <div><label>Stav</label>
+            <select id="pr-status">
+              <option value="dopyt">Dopyt</option>
+              <option value="zabookovane">Zabookované</option>
+              <option value="nakrutene">Nakrútené</option>
+              <option value="spracovane">Spracované</option>
+              <option value="zaplatene">Zaplatené</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div id="pr-status-strip" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div class="pr-indicator" id="pr-status-folder-badge">📁 Priečinok: —</div>
+          <div class="pr-indicator" id="pr-status-contract-badge">📄 Zmluva: —</div>
+          <div class="pr-indicator" id="pr-status-invoice-badge">🧾 Faktúra: —</div>
+          <div class="pr-indicator" id="pr-status-messages-badge">💬 Správy: —</div>
+        </div>
+        <div id="pr-sent-messages-log" style="margin-top:8px;font-size:12px;color:var(--text-faint);"></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text);margin:0;">
+            <input type="checkbox" id="pr-contract-generated" style="width:auto;" onchange="onContractFlagsChange()"> Zmluva vytvorená
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--text);margin:0;">
+            <input type="checkbox" id="pr-contract-signed" style="width:auto;" onchange="onContractFlagsChange()"> Zmluva podpísaná
+          </label>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
+        <p class="row-sub" style="margin:0 0 8px;">✍️ Podpis klienta (nakresli prstom/myšou, vloží sa do PDF zmluvy)</p>
+        <canvas id="pr-signature-pad" width="600" height="150" style="width:100%;max-width:500px;height:130px;background:#fff;border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn ghost small" onclick="clearSignaturePad()">Vymazať podpis</button>
+          <span class="row-sub" id="pr-signature-status" style="align-self:center;"></span>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px;" id="pr-profit-panel">
+        <h3>💰 Zisk / strata na zákazke</h3>
+        <div id="pr-profit-summary"></div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="panel">
+            <h3>👤 Klient</h3>
+            <input type="hidden" id="pr-client-mode" value="new">
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+              <button type="button" class="btn ghost small client-mode-btn active" id="client-mode-new-btn" onclick="setClientMode('new')">🆕 Nový klient</button>
+              <button type="button" class="btn ghost small client-mode-btn" id="client-mode-existing-btn" onclick="setClientMode('existing')">👤 Vybrať existujúceho</button>
+            </div>
+
+            <div id="pr-newclient-block">
+              <label>Meno klienta</label>
+              <input id="pr-newclient-name" placeholder="Meno a priezvisko" oninput="onProjectClientChange()">
+            </div>
+            <div id="pr-existingclient-block" style="display:none;">
+              <label>Vyber klienta</label>
+              <select id="pr-client" onchange="onProjectClientChange()"></select>
+            </div>
+
+            <div id="pr-client-contact" style="background:var(--surface-2);border:1px solid var(--surface-3);border-radius:8px;padding:12px 14px;margin-top:12px;">
+              <p class="row-sub" style="margin:0 0 8px;">Kontaktné údaje (ukladajú sa priamo do karty klienta):</p>
+              <div class="field-row">
+                <div><label>Email</label><input id="pr-client-email" type="email"></div>
+                <div><label>Telefón</label><input id="pr-client-phone"></div>
+              </div>
+              <div style="margin-top:10px;"><label>Adresa</label><input id="pr-client-address" placeholder="ulica, mesto"></div>
+              <div style="margin-top:10px;"><label>Šablóna WhatsApp správy</label><select id="pr-message-template" onchange="updateMessagePreview()"></select></div>
+              <div id="pr-message-preview" style="display:none;margin-top:10px;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-dim);white-space:pre-line;"></div>
+              <button class="btn ghost small" style="margin-top:10px;" onclick="sendTemplatedWhatsappFromProject()">💬 Poslať na WhatsApp</button>
+            </div>
+          </div>
+
+          <!-- SVADBA fields -->
+          <div id="pr-wedding-fields" class="panel" style="display:none;flex-direction:column;gap:12px;">
+            <p class="row-sub" style="margin:0;">💍 Detaily svadby — použijú sa na automatické vyplnenie zmluvy a časového harmonogramu.</p>
+            <div class="field-row">
+              <div><label>Nevesta - meno</label><input id="w-nevesta-meno" placeholder="Meno a priezvisko"></div>
+              <div><label>Nevesta - adresa</label><input id="w-nevesta-adresa" placeholder="ulica, mesto"></div>
+            </div>
+            <div class="field-row">
+              <div><label>Ženích - meno</label><input id="w-zenich-meno" placeholder="Meno a priezvisko"></div>
+              <div><label>Ženích - adresa</label><input id="w-zenich-adresa" placeholder="ulica, mesto"></div>
+            </div>
+            <div><label>Svadba - adresa</label><input id="w-svadba-miesto" placeholder="napr. Hotel, sála..."></div>
+
+            <div style="border-top:1px solid var(--border);margin:2px 0;"></div>
+            <p class="row-sub" style="margin:0;">Sobáš</p>
+            <div class="field-row">
+              <div><label>Kostol / miesto obradu</label><input id="w-sobas-kostol" placeholder="napr. Kostol sv. Martina"></div>
+              <div><label>Sobáš - adresa</label><input id="w-sobas-adresa" placeholder="ulica, mesto"></div>
+            </div>
+            <div class="field-row">
+              <div><label>Typ bohoslužby</label>
+                <select id="w-sobas-typ">
+                  <option value="">— nevybraté —</option>
+                  <option value="rimokatolicky">Rímokatolícky</option>
+                  <option value="greckokatolicky">Gréckokatolícky</option>
+                  <option value="pravoslavny">Pravoslávny</option>
+                  <option value="evanjelicky">Evanjelický</option>
+                  <option value="civilny">Civilný</option>
+                </select>
+              </div>
+              <div><label>Sobáš - čas</label><input type="time" id="w-sobas-cas"></div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);margin:2px 0;"></div>
+            <div class="field-row">
+              <div><label>Hudba</label>
+                <select id="w-hudba-typ">
+                  <option value="">— nevybraté —</option>
+                  <option value="kapela">Kapela</option>
+                  <option value="dj">DJ</option>
+                </select>
+              </div>
+              <div><label>Meno / názov</label><input id="w-hudba-meno" list="vendor-bands-list" placeholder="napr. HS Gold, DJ Peter..."></div>
+            </div>
+            <div class="field-row">
+              <div><label>Fotograf</label><input id="w-fotograf" list="vendor-photographers-list" placeholder="meno fotografa"></div>
+              <div><label>Balík</label>
+                <select id="w-balik" onchange="onPriceInputsChange()"></select>
+              </div>
+            </div>
+            <div><label>Špeciálne priania (prvý tanec, momenty na zachytenie...)</label><textarea id="w-special-wishes" placeholder="napr. prvý tanec pieseň 'Perfect' od Ed Sheerana, zachytiť moment odovzdania nevesty otcom..."></textarea></div>
+          </div>
+
+          <!-- STUŽKOVÁ fields -->
+          <div id="pr-stuzkova-fields" class="panel" style="display:none;flex-direction:column;gap:12px;">
+            <p class="row-sub" style="margin:0;">🎓 Detaily stužkovej.</p>
+            <div><label>Miesto</label><input id="s-miesto" placeholder="napr. kultúrny dom, hotel..."></div>
+            <div class="field-row">
+              <div><label>Hudba</label><input id="s-hudba" list="vendor-bands-list"></div>
+              <div><label>Fotograf</label><input id="s-fotograf" list="vendor-photographers-list"></div>
+            </div>
+            <div class="field-row">
+              <div><label>Počet žiakov</label><input type="number" id="s-pocet-ziakov"></div>
+              <div><label>Balík</label>
+                <select id="s-balik" onchange="onPriceInputsChange()"></select>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);">
+              <input type="checkbox" id="s-kradnutie" style="width:auto;"> Kradnutie (triednej knihy)
+            </label>
+          </div>
+
+          <div class="panel" style="display:flex;flex-direction:column;gap:10px;">
+            <h3>💶 Cenotvorba zákazky</h3>
+            <div style="display:flex;justify-content:space-between;font-size:13px;"><span>Balík:</span><span id="pr-price-balik-label" class="num">—</span></div>
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);margin:0;">
+              <input type="checkbox" id="pr-mimo-okresu" style="width:auto;" onchange="onPriceInputsChange()"> Mimo môjho okresu (pripočítať cestu)
+            </label>
+            <div class="field-row" id="pr-km-row" style="display:none;">
+              <div><label>Vzdialenosť (km, tam aj späť)</label><input type="number" id="pr-km" placeholder="0" oninput="onPriceInputsChange()"></div>
+              <div><label>Cesta (€)</label><input type="text" id="pr-price-cesta-label" class="num" disabled></div>
+            </div>
+            <div id="pr-priplatky-checks" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="border-top:1px solid var(--border);margin:2px 0;"></div>
+            <div style="display:flex;justify-content:space-between;font-weight:700;"><span>Spolu:</span><span id="pr-price-total" class="num" style="color:var(--accent);">0 €</span></div>
+            <button class="btn ghost small" style="align-self:flex-start;" onclick="applyPriceToBudget()">↓ Použiť ako rozpočet</button>
+          </div>
+
+          <div class="panel" style="display:flex;flex-direction:column;gap:8px;">
+            <h3>✅ Checklist</h3>
+            <div id="pr-checklist-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <input id="pr-checklist-new" placeholder="Nová položka (napr. Poslať zmluvu)" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();addChecklistItem();}">
+              <button class="btn ghost small" onclick="addChecklistItem()">+ Pridať</button>
+            </div>
+            <button class="btn ghost small" style="align-self:flex-start;margin-top:4px;" onclick="addChecklistPreset()">✨ Vyplniť bežné kroky podľa typu</button>
+          </div>
+
+          <div class="panel" style="display:flex;flex-direction:column;gap:10px;">
+            <h3>📦 Odovzdanie klientovi</h3>
+            <div><label>Odkaz na hotové video/fotky (Drive, YouTube...)</label><input id="pr-delivery-link" placeholder="https://..."></div>
+            <div><label>Dátum odovzdania</label><input type="date" id="pr-delivery-date"></div>
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);margin:0;">
+              <input type="checkbox" id="pr-delivery-confirmed" style="width:auto;"> Klient prevzal
+            </label>
+          </div>
+
+          <div class="panel" style="display:flex;flex-direction:column;gap:12px;">
+            <h3>📝 Doplnkové informácie</h3>
+            <div><label>Rozpočet (€)</label><input type="number" id="pr-budget" placeholder="0"></div>
+            <div>
+              <label>Odpracovaný čas — denník zápisov</label>
+              <div id="pr-time-entries-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                <input type="date" id="pr-time-entry-date" style="max-width:150px;">
+                <input type="number" step="0.1" id="pr-time-entry-hours" placeholder="hodiny" style="max-width:90px;">
+                <input id="pr-time-entry-note" placeholder="poznámka (napr. strih)" style="flex:1;min-width:120px;">
+                <button class="btn ghost small" onclick="addTimeEntry()">+ Pridať zápis</button>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                <button class="btn ghost small" id="pr-timer-btn" onclick="toggleWorkTimer()">▶️ Spustiť časovač</button>
+                <span class="row-sub" id="pr-timer-display"></span>
+              </div>
+              <div style="margin-top:8px;font-weight:700;">Spolu na tejto zákazke: <span id="pr-time-total" class="num" style="color:var(--accent);">0 h</span></div>
+            </div>
+            <div><label>Poznámka</label><textarea id="pr-notes"></textarea></div>
+            <div><label>Tagy (oddelené čiarkou)</label><input id="pr-tags" placeholder="napr. 2-kamery, kradnutie"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin:20px 0 40px;">
+        <button class="btn danger" id="pr-delete" onclick="deleteProject()">Odstrániť zákazku</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn ghost" id="pr-duplicate-btn" style="display:none;" onclick="duplicateProject()">📋 Duplikovať</button>
+          <button class="btn ghost" onclick="manualSyncProjectFolder()">📁 Aktualizovať priečinok</button>
+          <button class="btn ghost" id="pr-schedule-btn" style="display:none;" onclick="generateDaySchedulePDF()">🗓️ Harmonogram (PDF)</button>
+          <button class="btn ghost" onclick="generateContractPDF()">📄 Zmluva (PDF)</button>
+          <button class="btn" onclick="saveProject()">Uložiť zákazku</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: message template -->
+<div class="modal-overlay" id="modal-msgtemplate">
+  <div class="modal">
+    <div class="modal-head"><h3 id="msgTemplateModalTitle">Nová šablóna</h3><button class="modal-close" onclick="closeModal('modal-msgtemplate')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="mt-id">
+      <div><label>Názov šablóny</label><input id="mt-name" placeholder="napr. Potvrdenie rezervácie"></div>
+      <div><label>Text správy</label><textarea id="mt-text" style="min-height:160px;"></textarea></div>
+      <p class="row-sub" style="margin:0;">Zástupné znaky: {{meno}}, {{nazov_zakazky}}, {{termin}}, {{firma}}, {{konatel}}</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="mt-delete" onclick="deleteMessageTemplate()">Odstrániť</button>
+      <button class="btn" onclick="saveMessageTemplate()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: vendor -->
+<div class="modal-overlay" id="modal-vendor">
+  <div class="modal">
+    <div class="modal-head"><h3 id="vendorModalTitle">Nový dodávateľ</h3><button class="modal-close" onclick="closeModal('modal-vendor')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="vn-id">
+      <div><label>Meno / názov</label><input id="vn-name" placeholder="napr. Tomáš Golha, HS Gold..."></div>
+      <div><label>Typ</label>
+        <select id="vn-type">
+          <option value="fotograf">Fotograf</option>
+          <option value="kapela">Kapela</option>
+          <option value="dj">DJ</option>
+          <option value="ine">Iné</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div><label>Telefón</label><input id="vn-phone"></div>
+        <div><label>Email</label><input id="vn-email" type="email"></div>
+      </div>
+      <div><label>Poznámka (ako sa s ním pracuje...)</label><textarea id="vn-notes"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="vn-delete" onclick="deleteVendor()">Odstrániť</button>
+      <button class="btn" onclick="saveVendor()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: expense -->
+<div class="modal-overlay" id="modal-expense">
+  <div class="modal">
+    <div class="modal-head"><h3 id="expenseModalTitle">Nový náklad</h3><button class="modal-close" onclick="closeModal('modal-expense')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="exp-id">
+      <div class="field-row">
+        <div><label>Dátum</label><input type="date" id="exp-date"></div>
+        <div><label>Suma (€)</label><input type="number" id="exp-amount" placeholder="0"></div>
+      </div>
+      <div><label>Kategória</label>
+        <select id="exp-category">
+          <option value="benzin">Benzín / cesta</option>
+          <option value="technika">Technika / vybavenie</option>
+          <option value="asistent">Asistent / 2. kamera</option>
+          <option value="softver">Softvér / predplatné</option>
+          <option value="marketing">Marketing / reklama</option>
+          <option value="ine">Iné</option>
+        </select>
+      </div>
+      <div><label>Popis</label><input id="exp-description" placeholder="napr. Tankovanie na svadbu Fabryová"></div>
+      <div><label>Súvisiaca zákazka (voliteľné)</label><select id="exp-project"><option value="">— žiadna —</option></select></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="exp-delete" onclick="deleteExpense()">Odstrániť</button>
+      <button class="btn" onclick="saveExpense()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: booking -->
+<div class="modal-overlay" id="modal-booking">
+  <div class="modal">
+    <div class="modal-head"><h3 id="bookingModalTitle">Nová rezervácia</h3><button class="modal-close" onclick="closeModal('modal-booking')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="bk-id">
+      <div><label>Názov</label><input id="bk-title" placeholder="napr. Svadobný nákrut - Nováková"></div>
+      <div><label>Klient</label><select id="bk-client"></select></div>
+      <div class="field-row">
+        <div><label>Dátum</label><input type="date" id="bk-date"></div>
+        <div><label>Čas</label><input type="time" id="bk-time"></div>
+      </div>
+      <div><label>Miesto</label><input id="bk-location" placeholder="napr. Bratislava, hotel Sheraton"></div>
+      <div><label>Tagy (oddelené čiarkou)</label><input id="bk-tags" placeholder="napr. svadba, dron, exteriér"></div>
+      <div><label>Stav</label>
+        <select id="bk-status">
+          <option value="dopyt">Dopyt</option>
+          <option value="zabookovane">Zabookované</option>
+          <option value="nakrutene">Nakrútené</option>
+          <option value="spracovane">Spracované</option>
+          <option value="zaplatene">Zaplatené</option>
+        </select>
+      </div>
+      <div><label>Poznámka</label><textarea id="bk-notes"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="bk-delete" onclick="deleteBooking()">Odstrániť</button>
+      <button class="btn" onclick="saveBooking()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: client -->
+<div class="modal-overlay" id="modal-client">
+  <div class="modal">
+    <div class="modal-head"><h3 id="clientModalTitle">Nový klient</h3><button class="modal-close" onclick="closeModal('modal-client')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="cl-id">
+      <div><label>Meno / Firma</label><input id="cl-name" placeholder="napr. Peter Novák"></div>
+      <div class="field-row">
+        <div><label>Email</label><input id="cl-email" type="email"></div>
+        <div><label>Telefón</label><input id="cl-phone"></div>
+      </div>
+      <button class="btn ghost small" id="cl-whatsapp-btn" style="align-self:flex-start;display:none;" onclick="openWhatsappFromModal()">💬 Napísať na WhatsApp</button>
+      <div><label>Adresa</label><input id="cl-address" placeholder="ulica, mesto"></div>
+      <div><label>Odkiaľ prišiel klient</label>
+        <select id="cl-source">
+          <option value="">— nevybraté —</option>
+          <option value="instagram">Instagram</option>
+          <option value="odporucanie">Odporúčanie</option>
+          <option value="web">Web / Google</option>
+          <option value="facebook">Facebook</option>
+          <option value="ine">Iné</option>
+        </select>
+      </div>
+      <div><label>Poznámka</label><textarea id="cl-notes" placeholder="preferencie, história, poznámky..."></textarea></div>
+    </div>
+    <div class="modal-body" style="padding-top:0;border-top:1px solid var(--border);margin-top:2px;">
+      <label style="margin-top:12px;">História klienta</label>
+      <div id="clientHistory"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="cl-delete" onclick="deleteClient()">Odstrániť</button>
+      <button class="btn" onclick="saveClient()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL: import projects from text (e.g. Apple Reminders) -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h3>Import zákaziek z textu</h3><button class="modal-close" onclick="closeModal('modal-import')">×</button></div>
+    <div class="modal-body">
+      <p class="row-sub" style="margin:0 0 4px;">
+        <b style="color:var(--text);">Ako na to z Apple Pripomienok (Mac):</b><br>
+        1. Otvor zoznam v appke Pripomienky<br>
+        2. Klikni do zoznamu a stlač <b style="color:var(--text);">Cmd+A</b> (vyber všetko), potom <b style="color:var(--text);">Cmd+C</b> (skopírovať)<br>
+        3. Vlož text sem nižšie (jeden riadok = jedna zákazka)
+      </p>
+      <div><label>Vlož text z Pripomienok</label><textarea id="import-text" placeholder="Nakrucanie Svadba Fabryova 13.6.2026&#10;Firemné promo ABC s.r.o. 20.7.2026&#10;Produktové video Mliekáreň" style="min-height:180px;"></textarea></div>
+      <p class="row-sub" style="margin:-6px 0 0;">✓ Appka sama rozpozná dátum na konci riadku (napr. <span style="font-family:'JetBrains Mono',monospace;">13.6.2026</span>) a priradí ho ako termín zákazky.</p>
+      <div class="field-row">
+        <div><label>Priradiť klienta (voliteľné, všetkým naraz)</label><select id="import-client"><option value="">— bez klienta —</option></select></div>
+        <div><label>Počiatočný stav</label>
+          <select id="import-status">
+            <option value="dopyt">Dopyt</option>
+            <option value="zabookovane">Zabookované</option>
+            <option value="nakrutene">Nakrútené</option>
+          </select>
+        </div>
+      </div>
+      <p class="row-sub" style="margin:0;">Klienta a termíny si potom môžeš doplniť pri každej zákazke zvlášť.</p>
+    </div>
+    <div class="modal-foot">
+      <span class="row-sub" id="importPreviewCount"></span>
+      <button class="btn" onclick="runImportProjects()">Importovať</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Google Form sync -->
+<div class="modal-overlay" id="modal-googleform">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head"><h3>Google formulár — nové dopyty</h3><button class="modal-close" onclick="closeModal('modal-googleform')">×</button></div>
+    <div class="modal-body">
+      <div style="background:var(--surface-2);border:1px solid var(--surface-3);border-radius:8px;padding:14px;">
+        <p class="row-sub" style="margin:0 0 8px;"><b style="color:var(--text);">Ako to nastaviť (raz, potom už len synchronizuješ):</b></p>
+        <p class="row-sub" style="margin:0 0 6px;">1. Na <a href="https://forms.google.com" target="_blank" style="color:var(--accent);">forms.google.com</a> vytvor nový formulár s otázkami presne v tomto poradí:</p>
+        <p class="row-sub" style="margin:0 0 10px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.7;background:var(--surface-3);padding:8px 10px;border-radius:6px;">
+          Meno a priezvisko · Telefón · Email · Dátum akcie · Typ (Svadba / Stužková / Klip) · Miesto konania · Poznámka / špeciálne priania
+        </p>
+        <p class="row-sub" style="margin:0 0 6px;">2. Vo formulári klikni na záložku <b style="color:var(--text);">Odpovede</b> → zelená ikonka Sheets → vytvorí sa Google Sheet s odpoveďami.</p>
+        <p class="row-sub" style="margin:0 0 6px;">3. V tom Sheete: <b style="color:var(--text);">Súbor → Zdieľať → Publikovať na webe</b> → formát <b style="color:var(--text);">CSV</b> → Publikovať. Skopíruj odkaz, ktorý ti Google dá.</p>
+        <p class="row-sub" style="margin:0;">4. Odkaz vlož nižšie a ulož — appka odvtedy vie sama stiahnuť nové odpovede.</p>
+      </div>
+
+      <div><label>Odkaz na publikovaný CSV (Google Sheet)</label><input id="gform-csv-url" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost small" onclick="saveGoogleFormUrl()">Uložiť odkaz</button>
+        <button class="btn small" onclick="syncGoogleFormResponses()">🔄 Stiahnuť nové odpovede</button>
+      </div>
+
+      <div style="border-top:1px solid var(--border);margin:4px 0;"></div>
+      <p class="row-sub" style="margin:0;">Ak automatické stiahnutie nefunguje (napr. appka beží offline z disku), vlož CSV obsah ručne — v Google Sheet: <b style="color:var(--text);">Súbor → Stiahnuť → Čiarkou oddelené hodnoty (.csv)</b>, otvor v textovom editore a skopíruj sem celý obsah.</p>
+      <textarea id="gform-csv-paste" placeholder="Timestamp,Meno a priezvisko,Telefón,Email,Dátum akcie,Typ,Miesto konania,Poznámka..." style="min-height:120px;font-family:'JetBrains Mono',monospace;font-size:11.5px;"></textarea>
+      <button class="btn ghost small" style="align-self:flex-start;" onclick="parseGoogleFormCsv(document.getElementById('gform-csv-paste').value)">Spracovať vložený text</button>
+
+      <div id="gform-preview-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="row-sub" id="gform-preview-count"></span>
+      <button class="btn" id="gform-import-btn" style="display:none;" onclick="importSelectedGoogleFormRows()">Importovať vybrané ako nové zákazky</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: invoice -->
+<div class="modal-overlay" id="modal-invoice">
+  <div class="modal">
+    <div class="modal-head"><h3 id="invoiceModalTitle">Nová faktúra</h3><button class="modal-close" onclick="closeModal('modal-invoice')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="iv-id">
+      <div><label>Číslo faktúry</label><input id="iv-number" placeholder="napr. 2026-014"></div>
+      <div><label>Klient</label><select id="iv-client"></select></div>
+      <div><label>Súvisiaca zákazka</label><select id="iv-project" onchange="onInvoiceProjectChange()"><option value="">— žiadna —</option></select></div>
+      <div><label>Typ platby</label>
+        <select id="iv-type">
+          <option value="cela">Celá suma</option>
+          <option value="zaloha">Záloha</option>
+          <option value="doplatok">Doplatok</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div><label>Suma (€)</label><input type="number" id="iv-amount" placeholder="0"></div>
+        <div><label>Splatnosť</label><input type="date" id="iv-due"></div>
+      </div>
+      <div id="iv-vat-section" style="display:none;background:var(--surface-2);border:1px solid var(--surface-3);border-radius:8px;padding:12px 14px;">
+        <p class="row-sub" style="margin:0 0 8px;">DPH — vyplň základ a sadzbu, suma na úhradu sa dopočíta sama:</p>
+        <div class="field-row">
+          <div><label>Základ (bez DPH, €)</label><input type="number" id="iv-vat-base" placeholder="0" oninput="recalcInvoiceVat()"></div>
+          <div><label>Sadzba DPH (%)</label><input type="number" id="iv-vat-rate" placeholder="20" oninput="recalcInvoiceVat()"></div>
+        </div>
+        <div class="row-sub" id="iv-vat-summary" style="margin-top:8px;"></div>
+      </div>
+      <div><label>Stav</label>
+        <select id="iv-status"><option value="neuhradena">Neuhradená</option><option value="uhradena">Uhradená</option></select>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);margin:0;">
+        <input type="checkbox" id="iv-sent" style="width:auto;"> Odoslaná klientovi
+      </label>
+      <div id="iv-project-summary" class="row-sub" style="display:none;"></div>
+      <div style="border-top:1px solid var(--border);margin:2px 0;"></div>
+      <button class="btn ghost small" style="align-self:flex-start;" onclick="generateInvoiceQR()">💳 Vygenerovať QR platbu (Pay by Square)</button>
+      <div id="iv-qr-container" style="display:none;background:#fff;border-radius:8px;padding:16px;text-align:center;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="iv-delete" onclick="deleteInvoice()">Odstrániť</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost small" onclick="generateInvoicePDF()">🧾 Faktúra (PDF)</button>
+        <button class="btn" onclick="saveInvoice()">Uložiť</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="js/01-state.js"></script>
+<script src="js/02-utils-theme.js"></script>
+<script src="js/03-pricing.js"></script>
+<script src="js/04-hours-expenses.js"></script>
+<script src="js/05-vendors-messages.js"></script>
+<script src="js/06-export-backup-pdf.js"></script>
+<script src="js/07-weather-crmfolder.js"></script>
+<script src="js/08-dashboard.js"></script>
+<script src="js/09-calendar.js"></script>
+<script src="js/10-clients-projects-list.js"></script>
+<script src="js/11-app-core.js"></script>
+<script src="js/12-bookings.js"></script>
+<script src="js/13-clients-crud.js"></script>
+<script src="js/14-project-pricing-fields.js"></script>
+<script src="js/15-project-extras.js"></script>
+<script src="js/16-project-crud.js"></script>
+<script src="js/17-import.js"></script>
+<script src="js/18-invoices-crud.js"></script>
+<script src="js/19-init-autobackup.js"></script>
+<datalist id="vendor-photographers-list"></datalist>
+<datalist id="vendor-bands-list"></datalist>
+</body>
+</html>
