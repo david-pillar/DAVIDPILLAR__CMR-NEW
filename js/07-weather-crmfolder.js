@@ -28,8 +28,10 @@ async function loadWeatherForecasts(){
     p.wedding && (p.wedding.svadbaMiesto || p.wedding.sobasKostol)
   );
 
+  const weatherPanel = document.getElementById('weatherPanel');
   if(!upcoming.length){
     container.innerHTML = '<div class="empty">Žiadne svadby v najbližších 10 dňoch (alebo nemajú vyplnené miesto konania).</div>';
+    if(weatherPanel) weatherPanel.classList.remove('panel-attention');
     return;
   }
   container.innerHTML = '<div class="empty">Načítavam predpoveď…</div>';
@@ -67,6 +69,9 @@ async function loadWeatherForecasts(){
       <span class="row-sub">${weatherCodeToLabel(r.code)} · ${Math.round(r.tmin)}–${Math.round(r.tmax)}°C</span>
     </div>`;
   }).join('');
+  // Zvýrazni dlaždicu na dashboarde (rovnaký "panel-attention" štýl ako pri chýbajúcich správach),
+  // keď máme aspoň jednu reálne stiahnutú predpoveď — inak sa počasie ľahko stratí medzi ostatnými dlaždicami.
+  if(weatherPanel) weatherPanel.classList.toggle('panel-attention', results.some(r=>!r.error));
   renderCalendar(); // pick up any newly cached weather icons for the currently viewed month
 }
 

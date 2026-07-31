@@ -311,15 +311,15 @@
   @media (max-width:900px){.cols-2{grid-template-columns:1fr;}}
 
   /* ---- Dashboard Bento Grid: dlaždice rôznej veľkosti podľa dôležitosti,
-     nie rovnaký stoh panelov pod sebou. Chýbajúce správy (akčné, žiariace)
-     dostanú väčšiu plochu ako počasie (doplnková informácia). ---- */
+     nie rovnaký stoh panelov pod sebou. Počasie je teraz v prvom rade spolu
+     s rezerváciami/zákazkami (nie schované dole pri výročiach), nech ho
+     nie je treba hľadať scrollovaním. ---- */
   .bento-grid{
     display:grid;gap:16px;margin-top:20px;
     grid-template-columns:repeat(6, 1fr);
     grid-template-areas:
-      "bookings bookings bookings projects projects projects"
-      "bookings bookings bookings projects projects projects"
-      "messages messages messages messages weather weather"
+      "bookings bookings projects projects weather weather"
+      "bookings bookings projects projects weather weather"
       "messages messages messages messages anniv anniv"
       "messages messages messages messages notes notes"
       "yearly yearly yearly yearly yearly yearly";
@@ -339,16 +339,16 @@
       grid-template-columns:1fr 1fr;
       grid-template-areas:
         "bookings projects"
+        "weather weather"
         "messages messages"
-        "weather anniv"
-        "notes notes"
+        "anniv notes"
         "yearly yearly";
     }
   }
   @media (max-width:760px){
     .bento-grid{
       grid-template-columns:1fr;
-      grid-template-areas:"bookings" "projects" "messages" "weather" "anniv" "notes" "yearly";
+      grid-template-areas:"bookings" "projects" "weather" "messages" "anniv" "notes" "yearly";
     }
   }
 
@@ -674,16 +674,23 @@
     .brand-sub{display:none;}
     nav{flex-direction:row;margin-top:0;}
     .nav-item span:not(.nav-badge){display:none;}
-    .nav-item{padding:10px 12px;position:relative;}
+    .nav-item{padding:10px 9px;position:relative;}
     .nav-item .nav-badge{
       position:absolute;top:4px;right:4px;margin-left:0;min-width:8px;width:8px;height:8px;padding:0;font-size:0;
     }
     .sidebar-foot{display:none;}
     #themeToggleBtn{display:none;}
-    #global-search{width:120px;}
-    #global-search-results{left:0;right:auto;width:220px;}
+    /* Globálne vyhľadávanie (Ctrl+K) dáva zmysel len s klávesnicou — na mobile by v úzkom
+       120px poli len zbytočne kradlo miesto navigačným ikonám. Hľadanie klienta/zákazky
+       ostáva dostupné cez vyhľadávacie polia priamo v danej sekcii (Klienti, Dodávatelia). */
+    .global-search-wrap{display:none;}
     .main{padding:18px 14px calc(50px + env(safe-area-inset-bottom));}
     table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
     .field-row{grid-template-columns:1fr;}
     .cols-2{grid-template-columns:1fr;}
+    /* Viacero tlačidiel v topbar (Zákazky, Kalendár, Faktúry) — kompaktnejšie,
+       aby nezaberali polovicu obrazovky ešte pred samotným obsahom stránky. */
+    .topbar{gap:8px;margin-bottom:16px;}
+    .topbar .btn{padding:8px 12px;font-size:12px;}
+    .slate-value.name-input{width:150px;font-size:20px;}
   }

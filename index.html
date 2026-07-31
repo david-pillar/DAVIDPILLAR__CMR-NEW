@@ -50,7 +50,7 @@
         <div class="brand-sub">Produkčný manažér</div>
       </div>
     </div>
-    <div style="position:relative;padding:0 8px 12px;">
+    <div class="global-search-wrap" style="position:relative;padding:0 8px 12px;">
       <input id="global-search" placeholder="🔍 Hľadať... (Ctrl+K)" style="font-size:13px;padding:8px 10px;" oninput="onGlobalSearchInput()" onfocus="onGlobalSearchInput()">
       <div id="global-search-results" style="display:none;position:absolute;top:100%;left:8px;right:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);z-index:60;max-height:340px;overflow-y:auto;"></div>
     </div>
@@ -178,7 +178,7 @@
           <h3 style="margin-bottom:12px;">📨 Chýbajúce správy klientom</h3>
           <div id="missingMessagesList"></div>
         </div>
-        <div class="panel bento-tile-weather">
+        <div class="panel bento-tile-weather" id="weatherPanel">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
             <h3 style="margin:0;">🌦️ Počasie — svadby do 10 dní</h3>
             <button class="btn ghost small" onclick="loadWeatherForecasts()">🔄</button>
