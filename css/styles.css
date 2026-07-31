@@ -513,11 +513,17 @@
   .cal-chip.type-ine{background:var(--surface-3);color:var(--text-dim);}
   .cal-chip-more{font-size:10px;color:var(--text-faint);flex:none;}
   @media (max-width:640px){
-    .cal-grid{gap:4px;}
-    .cal-day{padding:4px;min-height:56px;}
-    .cal-chip{font-size:8.5px;padding:1px 3px;}
-    .cal-daynum{font-size:12px;}
-    .cal-daynum-dow{display:none;}
+    /* Predtým boli dni na mobile malé štvorčeky odvodené zo šírky stĺpca (aspect-ratio 1/1)
+       — na úzkej obrazovke to vyšlo veľmi nízke a natlačené. Zrušením aspect-ratio a väčším
+       min-height dostanú bunky viac výšky (nie sú viazané na šírku), takže sa dátum, počasie
+       aj rezervácie dajú čítať pohodlnejšie, aj keď je stĺpcov stále 7 vedľa seba. */
+    .cal-grid{gap:3px;}
+    .cal-day{aspect-ratio:auto;padding:5px 4px;min-height:80px;gap:2px;}
+    .cal-chip{font-size:9.5px;padding:2px 4px;}
+    .cal-daynum{font-size:14px;gap:3px;}
+    .cal-daynum-dow{display:inline;font-size:7.5px;}
+    .cal-day-count{width:14px;height:14px;font-size:8px;}
+    .cal-day-weather{font-size:13px;}
   }
 
   /* STATUS TABS + PROJECT CARD GRID */
