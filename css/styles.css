@@ -517,8 +517,8 @@
        — na úzkej obrazovke to vyšlo veľmi nízke a natlačené. Zrušením aspect-ratio a väčším
        min-height dostanú bunky viac výšky (nie sú viazané na šírku), takže sa dátum, počasie
        aj rezervácie dajú čítať pohodlnejšie, aj keď je stĺpcov stále 7 vedľa seba. */
-    .cal-grid{gap:3px;}
-    .cal-day{aspect-ratio:auto;padding:5px 4px;min-height:80px;gap:2px;}
+    .cal-grid{gap:2px;}
+    .cal-day{aspect-ratio:auto;padding:5px 3px;min-height:84px;border-width:1px;gap:2px;}
     .cal-chip{font-size:9.5px;padding:2px 4px;}
     .cal-daynum{font-size:14px;gap:3px;}
     .cal-daynum-dow{display:inline;font-size:7.5px;}
@@ -705,7 +705,7 @@
        120px poli len zbytočne kradlo miesto navigačným ikonám. Hľadanie klienta/zákazky
        ostáva dostupné cez vyhľadávacie polia priamo v danej sekcii (Klienti, Dodávatelia). */
     .global-search-wrap{display:none;}
-    .main{padding:18px 14px calc(50px + env(safe-area-inset-bottom));}
+    .main{padding:18px 8px calc(50px + env(safe-area-inset-bottom));}
     table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;}
     .field-row{grid-template-columns:1fr;}
     .cols-2{grid-template-columns:1fr;}
