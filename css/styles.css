@@ -708,4 +708,10 @@
     .topbar{gap:8px;margin-bottom:16px;}
     .topbar .btn{padding:8px 12px;font-size:12px;}
     .slate-value.name-input{width:150px;font-size:20px;}
+    /* Riadky so zoznamom (klienti, zákazky s chýbajúcou správou...) mali napevno vedľa seba
+       titulok + akčné tlačidlá/odznaky bez možnosti zalomenia — na užšej obrazovke to
+       vytláčalo obsah mimo viditeľnú plochu namiesto toho, aby sa jednoducho zalomilo
+       na ďalší riadok. */
+    .list-row, .missing-msg-row{flex-wrap:wrap;row-gap:6px;}
+    .row-title{white-space:normal;overflow-wrap:break-word;text-overflow:clip;}
   }
