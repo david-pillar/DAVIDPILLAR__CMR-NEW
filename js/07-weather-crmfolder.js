@@ -16,19 +16,23 @@ function weatherCodeToEmoji(code){
   const label = WEATHER_CODE_MAP[code] || '❓';
   return label.split(' ')[0]; // WEATHER_CODE_MAP values are "emoji slovo" — just the emoji for compact display
 }
-var weatherCache = {}; // { 'YYYY-MM-DD': { code, tmax, tmin } } — used to show a small weather icon directly in the calendar cell.
-// Miesto konania podľa typu zákazky — zatiaľ majú vyplniteľné miesto len svadby (miesto hostiny
-// alebo kostol) a stužkové (miesto). Klip/Iné v appke zatiaľ nemajú vlastné pole na miesto, takže
-// pre ne nie je čo geokódovať.
+var weatherCache = {}; // { 'YYYY-MM-DD': { code, tmax, tmin, pop } } — used to show a small weather icon directly in the calendar cell.
+// Miesto konania podľa typu zákazky — svadba a stužková majú svoje vlastné polia (miesto hostiny/kostol,
+// resp. miesto), inak (aj pre klip/iné) sa použije všeobecné pole "location" zo zákazky.
 function getProjectWeatherLocation(p){
-  if(p.type==='svadba' && p.wedding) return p.wedding.svadbaMiesto || p.wedding.sobasKostol || '';
-  if(p.type==='stuzkova' && p.stuzkova) return p.stuzkova.miesto || '';
-  return '';
+  if(p.type==='svadba' && p.wedding && (p.wedding.svadbaMiesto || p.wedding.sobasKostol)) return p.wedding.svadbaMiesto || p.wedding.sobasKostol;
+  if(p.type==='stuzkova' && p.stuzkova && p.stuzkova.miesto) return p.stuzkova.miesto;
+  return p.location || '';
+}
+// Búrka/silný dážď/sneženie/krúpy — kódy, pri ktorých má zmysel vizuálne upozorniť.
+var WEATHER_WARNING_CODES = new Set([65,75,82,95,96,99]);
+function isWeatherRisky(code, pop){
+  return WEATHER_WARNING_CODES.has(code) || (typeof pop === 'number' && pop >= 60);
 }
 async function loadWeatherForecasts(){
   const container = document.getElementById('weatherForecastList');
   const todayStr = toLocalISODate(new Date());
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+10);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+16);
   const cutoffStr = toLocalISODate(cutoff);
 
   const upcoming = DATA.projects.filter(p=>
@@ -37,7 +41,7 @@ async function loadWeatherForecasts(){
 
   const weatherPanel = document.getElementById('weatherPanel');
   if(!upcoming.length){
-    container.innerHTML = '<div class="empty">Žiadne svadby/stužkové v najbližších 10 dňoch (alebo nemajú vyplnené miesto konania).</div>';
+    container.innerHTML = '<div class="empty">Žiadne zákazky s vyplneným miestom konania v najbližších 16 dňoch.</div>';
     if(weatherPanel) weatherPanel.classList.remove('panel-attention');
     return;
   }
@@ -51,17 +55,19 @@ async function loadWeatherForecasts(){
       const geoData = await geoRes.json();
       if(!geoData.results || !geoData.results.length){ results.push({ p, location, error:true }); continue; }
       const { latitude, longitude, name } = geoData.results[0];
-      const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${p.deadline}&end_date=${p.deadline}`);
+      const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${p.deadline}&end_date=${p.deadline}`);
       const forecastData = await forecastRes.json();
       if(!forecastData.daily || !forecastData.daily.time || !forecastData.daily.time.length){ results.push({ p, location, error:true }); continue; }
+      const pop = forecastData.daily.precipitation_probability_max ? forecastData.daily.precipitation_probability_max[0] : null;
       const dayResult = {
         p, location: name || location,
         code: forecastData.daily.weathercode[0],
         tmax: forecastData.daily.temperature_2m_max[0],
-        tmin: forecastData.daily.temperature_2m_min[0]
+        tmin: forecastData.daily.temperature_2m_min[0],
+        pop
       };
       results.push(dayResult);
-      weatherCache[p.deadline] = { code: dayResult.code, tmax: dayResult.tmax, tmin: dayResult.tmin };
+      weatherCache[p.deadline] = { code: dayResult.code, tmax: dayResult.tmax, tmin: dayResult.tmin, pop };
     }catch(e){
       results.push({ p, location, error:true });
     }
@@ -71,9 +77,11 @@ async function loadWeatherForecasts(){
     if(r.error){
       return `<div class="list-row"><div class="row-main"><div class="row-title">${escapeHtml(r.p.title)}</div><div class="row-sub">${fmtDate(r.p.deadline)} · ${escapeHtml(r.location)}</div></div><span class="row-sub">Predpoveď nedostupná</span></div>`;
     }
-    return `<div class="list-row">
+    const risky = isWeatherRisky(r.code, r.pop);
+    const popLabel = (typeof r.pop === 'number') ? ` · 💧 ${Math.round(r.pop)}%` : '';
+    return `<div class="list-row"${risky ? ' style="background:rgba(220,60,60,0.1);border-radius:8px;"' : ''}>
       <div class="row-main"><div class="row-title">${escapeHtml(r.p.title)}</div><div class="row-sub">${fmtDate(r.p.deadline)} · ${escapeHtml(r.location)}</div></div>
-      <span class="row-sub">${weatherCodeToLabel(r.code)} · ${Math.round(r.tmin)}–${Math.round(r.tmax)}°C</span>
+      <span class="row-sub"${risky ? ' style="color:#c62828;font-weight:600;"' : ''}>${risky ? '⚠️ ' : ''}${weatherCodeToLabel(r.code)} · ${Math.round(r.tmin)}–${Math.round(r.tmax)}°C${popLabel}</span>
     </div>`;
   }).join('');
   // Zvýrazni dlaždicu na dashboarde (rovnaký "panel-attention" štýl ako pri chýbajúcich správach),

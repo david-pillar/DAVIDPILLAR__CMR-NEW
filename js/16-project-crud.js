@@ -23,6 +23,7 @@ function openProjectModal(id){
     document.getElementById('pr-client').value = p.clientId||'';
     document.getElementById('pr-deadline').value = p.deadline||'';
     document.getElementById('pr-budget').value = p.budget||'';
+    document.getElementById('pr-location').value = p.location||'';
     currentTimeEntries = (p.timeEntries || []).map(e=>({...e}));
     renderTimeEntries();
     resetWorkTimer();
@@ -83,6 +84,7 @@ function openProjectModal(id){
     document.getElementById('pr-client').value = '';
     document.getElementById('pr-deadline').value = '';
     document.getElementById('pr-budget').value = '';
+    document.getElementById('pr-location').value = '';
     currentTimeEntries = [];
     renderTimeEntries();
     resetWorkTimer();
@@ -190,6 +192,7 @@ async function saveProject(){
     clientId,
     deadline: document.getElementById('pr-deadline').value,
     budget: document.getElementById('pr-budget').value,
+    location: document.getElementById('pr-location').value.trim(),
     timeEntries: currentTimeEntries,
     hoursSpent: currentTimeEntries.reduce((s,e)=>s+Number(e.hours||0),0),
     status: document.getElementById('pr-status').value,

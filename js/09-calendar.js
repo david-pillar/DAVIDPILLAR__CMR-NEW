@@ -90,7 +90,9 @@ function renderCalendar(){
     const isSoon = items.length>0 && dStr>=todayStr && dStr<=soonCutoffStr;
     const countBadge = items.length>=2 ? `<div class="cal-day-count">${items.length}</div>` : '';
     const weatherEntry = weatherCache[dStr];
-    const weatherBadge = weatherEntry ? `<div class="cal-day-weather" title="${weatherCodeToLabel(weatherEntry.code)} · ${Math.round(weatherEntry.tmin)}–${Math.round(weatherEntry.tmax)}°C">${weatherCodeToEmoji(weatherEntry.code)}</div>` : '';
+    const weatherRisky = weatherEntry && isWeatherRisky(weatherEntry.code, weatherEntry.pop);
+    const popTitle = weatherEntry && typeof weatherEntry.pop==='number' ? ` · 💧${Math.round(weatherEntry.pop)}%` : '';
+    const weatherBadge = weatherEntry ? `<div class="cal-day-weather${weatherRisky?' cal-day-weather-warn':''}" title="${weatherCodeToLabel(weatherEntry.code)} · ${Math.round(weatherEntry.tmin)}–${Math.round(weatherEntry.tmax)}°C${popTitle}">${weatherRisky?'⚠️':weatherCodeToEmoji(weatherEntry.code)}</div>` : '';
     // Deň s aspoň jednou rezerváciou dostane bielu žiaru + orámovanie vo farbe podľa typu
     // (ak je viac typov naraz, berie sa farba prvej rezervácie toho dňa).
     const dominantType = items.length ? bookingChipType(items[0]) : null;

@@ -67,7 +67,7 @@ function maybeAutoLoadWeather(){
   // jednom zlyhanom pokuse). Krátky cooldown len bráni zbytočnému bombardovaniu API
   // pri rýchlom prekliknutí medzi stránkami.
   const todayStr = toLocalISODate(new Date());
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+10);
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+16);
   const cutoffStr = toLocalISODate(cutoff);
   const stillNeedsWeather = DATA.projects.some(p=>
     p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr &&

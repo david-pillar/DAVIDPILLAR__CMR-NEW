@@ -183,7 +183,7 @@
             <h3 style="margin:0;">🌦️ Počasie — svadby do 10 dní</h3>
             <button class="btn ghost small" onclick="loadWeatherForecasts()">🔄</button>
           </div>
-          <div id="weatherForecastList"><div class="empty">Predpoveď sa načíta automaticky, ak máš svadbu do 10 dní (🔄 = ručné obnovenie, vyžaduje internet).</div></div>
+          <div id="weatherForecastList"><div class="empty">Predpoveď sa načíta automaticky, ak má niektorá zákazka do 16 dní vyplnené miesto konania (🔄 = ručné obnovenie, vyžaduje internet).</div></div>
         </div>
         <div class="panel bento-tile-anniv">
           <h3>💐 Výročia svadieb</h3>
@@ -738,6 +738,10 @@
               <option value="zaplatene">Zaplatené</option>
             </select>
           </div>
+        </div>
+        <div style="margin-top:10px;">
+          <label>Miesto konania</label>
+          <input id="pr-location" placeholder="napr. Sála Rasľavice, alebo mesto/obec — pre predpoveď počasia">
         </div>
       </div>
 
