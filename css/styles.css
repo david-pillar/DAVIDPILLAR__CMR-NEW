@@ -404,6 +404,18 @@
   .row-sub{font-size:12px;color:var(--text-dim);}
   .row-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);flex:none;}
 
+  .weather-item{padding:10px 4px;border-bottom:1px solid var(--surface-3);}
+  .weather-item:last-child{border-bottom:none;}
+  .weather-item-warn{background:rgba(220,60,60,0.1);border-radius:8px;}
+  .weather-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .weather-sun{font-size:11px;color:var(--text-dim);margin-top:4px;}
+  .weather-hourly{display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;}
+  .weather-hour{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--text-dim);min-width:36px;cursor:help;}
+  .weather-hour-time{font-size:10px;}
+  .weather-hour-emoji{font-size:15px;line-height:1.2;}
+  .weather-hour-temp{font-weight:600;color:var(--text);}
+  .weather-hour-warn .weather-hour-temp{color:#c62828;}
+
   .pill{
     display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;
     letter-spacing:.3px;white-space:nowrap;

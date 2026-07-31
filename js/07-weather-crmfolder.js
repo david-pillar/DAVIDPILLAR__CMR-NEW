@@ -16,6 +16,12 @@ function weatherCodeToEmoji(code){
   const label = WEATHER_CODE_MAP[code] || '❓';
   return label.split(' ')[0]; // WEATHER_CODE_MAP values are "emoji slovo" — just the emoji for compact display
 }
+// Open-Meteo vracia sunrise/sunset ako "2026-08-01T05:52" — vytiahne len čas "05:52".
+function fmtHM(isoDateTime){
+  if(!isoDateTime) return '';
+  const parts = isoDateTime.split('T');
+  return parts.length>1 ? parts[1] : isoDateTime;
+}
 var weatherCache = {}; // { 'YYYY-MM-DD': { code, tmax, tmin, pop } } — used to show a small weather icon directly in the calendar cell.
 // Miesto konania podľa typu zákazky — svadba a stužková majú svoje vlastné polia (miesto hostiny/kostol,
 // resp. miesto), inak (aj pre klip/iné) sa použije všeobecné pole "location" zo zákazky.
@@ -69,16 +75,34 @@ async function loadWeatherForecasts(){
       const geoResult = await geocodeLocation(location);
       if(!geoResult){ results.push({ p, location, error:true }); continue; }
       const { latitude, longitude, name } = geoResult;
-      const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${p.deadline}&end_date=${p.deadline}`);
+      const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&hourly=temperature_2m,weathercode,precipitation_probability&timezone=auto&start_date=${p.deadline}&end_date=${p.deadline}`);
       const forecastData = await forecastRes.json();
       if(!forecastData.daily || !forecastData.daily.time || !forecastData.daily.time.length){ results.push({ p, location, error:true }); continue; }
       const pop = forecastData.daily.precipitation_probability_max ? forecastData.daily.precipitation_probability_max[0] : null;
+      const sunrise = forecastData.daily.sunrise ? forecastData.daily.sunrise[0] : null;
+      const sunset = forecastData.daily.sunset ? forecastData.daily.sunset[0] : null;
+      // Krátky výber hodín cez deň (namiesto celých 24) — dosť na predstavu o priebehu,
+      // stále sa to zmestí do jedného kompaktného riadku na dashboarde.
+      const HOURS_TO_SHOW = [8,12,16,20];
+      let hourlySlots = [];
+      if(forecastData.hourly && forecastData.hourly.time){
+        hourlySlots = HOURS_TO_SHOW.map(h=>{
+          const idx = forecastData.hourly.time.findIndex(t=>t.endsWith(`T${String(h).padStart(2,'0')}:00`));
+          if(idx<0) return null;
+          return {
+            hour: h,
+            temp: forecastData.hourly.temperature_2m[idx],
+            code: forecastData.hourly.weathercode[idx],
+            pop: forecastData.hourly.precipitation_probability ? forecastData.hourly.precipitation_probability[idx] : null
+          };
+        }).filter(Boolean);
+      }
       const dayResult = {
         p, location: name || location,
         code: forecastData.daily.weathercode[0],
         tmax: forecastData.daily.temperature_2m_max[0],
         tmin: forecastData.daily.temperature_2m_min[0],
-        pop
+        pop, sunrise, sunset, hourlySlots
       };
       results.push(dayResult);
       weatherCache[p.deadline] = { code: dayResult.code, tmax: dayResult.tmax, tmin: dayResult.tmin, pop };
@@ -89,13 +113,26 @@ async function loadWeatherForecasts(){
 
   container.innerHTML = results.map(r=>{
     if(r.error){
-      return `<div class="list-row"><div class="row-main"><div class="row-title">${escapeHtml(r.p.title)}</div><div class="row-sub">${fmtDate(r.p.deadline)} · ${escapeHtml(r.location)}</div></div><span class="row-sub">Predpoveď nedostupná</span></div>`;
+      return `<div class="weather-item"><div class="weather-top"><div class="row-main"><div class="row-title">${escapeHtml(r.p.title)}</div><div class="row-sub">${fmtDate(r.p.deadline)} · ${escapeHtml(r.location)}</div></div><span class="row-sub">Predpoveď nedostupná</span></div></div>`;
     }
     const risky = isWeatherRisky(r.code, r.pop);
     const popLabel = (typeof r.pop === 'number') ? ` · 💧 ${Math.round(r.pop)}%` : '';
-    return `<div class="list-row"${risky ? ' style="background:rgba(220,60,60,0.1);border-radius:8px;"' : ''}>
-      <div class="row-main"><div class="row-title">${escapeHtml(r.p.title)}</div><div class="row-sub">${fmtDate(r.p.deadline)} · ${escapeHtml(r.location)}</div></div>
-      <span class="row-sub"${risky ? ' style="color:#c62828;font-weight:600;"' : ''}>${risky ? '⚠️ ' : ''}${weatherCodeToLabel(r.code)} · ${Math.round(r.tmin)}–${Math.round(r.tmax)}°C${popLabel}</span>
+    const sunLine = (r.sunrise && r.sunset) ? `<div class="weather-sun">🌅 východ ${fmtHM(r.sunrise)} · 🌇 západ ${fmtHM(r.sunset)}</div>` : '';
+    const hourlyHtml = (r.hourlySlots && r.hourlySlots.length) ? `<div class="weather-hourly">${r.hourlySlots.map(h=>{
+      const hRisky = isWeatherRisky(h.code, h.pop);
+      return `<div class="weather-hour${hRisky?' weather-hour-warn':''}" title="${weatherCodeToLabel(h.code)}${typeof h.pop==='number'?' · 💧'+Math.round(h.pop)+'%':''}">
+        <div class="weather-hour-time">${String(h.hour).padStart(2,'0')}:00</div>
+        <div class="weather-hour-emoji">${weatherCodeToEmoji(h.code)}</div>
+        <div class="weather-hour-temp">${Math.round(h.temp)}°</div>
+      </div>`;
+    }).join('')}</div>` : '';
+    return `<div class="weather-item${risky ? ' weather-item-warn' : ''}">
+      <div class="weather-top">
+        <div class="row-main"><div class="row-title">${escapeHtml(r.p.title)}</div><div class="row-sub">${fmtDate(r.p.deadline)} · ${escapeHtml(r.location)}</div></div>
+        <span class="row-sub"${risky ? ' style="color:#c62828;font-weight:600;"' : ''}>${risky ? '⚠️ ' : ''}${weatherCodeToLabel(r.code)} · ${Math.round(r.tmin)}–${Math.round(r.tmax)}°C${popLabel}</span>
+      </div>
+      ${sunLine}
+      ${hourlyHtml}
     </div>`;
   }).join('');
   // Zvýrazni dlaždicu na dashboarde (rovnaký "panel-attention" štýl ako pri chýbajúcich správach),
