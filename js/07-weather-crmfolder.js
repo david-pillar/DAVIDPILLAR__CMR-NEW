@@ -29,6 +29,21 @@ var WEATHER_WARNING_CODES = new Set([65,75,82,95,96,99]);
 function isWeatherRisky(code, pop){
   return WEATHER_WARNING_CODES.has(code) || (typeof pop === 'number' && pop >= 60);
 }
+// Open-Meteo geokódovanie pozná len skutočné obce/mestá, nie názvy sál/hotelov (napr. "Sála Rasľavice"
+// alebo "Hotel Šariš Bardejov"). Preto skúša najprv celý reťazec a pri neúspechu postupne odsekáva
+// slová zľava — obec/mesto je v takýchto názvoch takmer vždy na konci.
+async function geocodeLocation(location){
+  const words = location.trim().split(/\s+/).filter(Boolean);
+  for(let i=0; i<words.length; i++){
+    const candidate = words.slice(i).join(' ');
+    try{
+      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(candidate)}&count=1&language=sk`);
+      const geoData = await geoRes.json();
+      if(geoData.results && geoData.results.length) return geoData.results[0];
+    }catch(e){ /* skús ďalší kandidát */ }
+  }
+  return null;
+}
 async function loadWeatherForecasts(){
   const container = document.getElementById('weatherForecastList');
   const todayStr = toLocalISODate(new Date());
@@ -51,10 +66,9 @@ async function loadWeatherForecasts(){
   for(const p of upcoming){
     const location = getProjectWeatherLocation(p);
     try{
-      const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=sk`);
-      const geoData = await geoRes.json();
-      if(!geoData.results || !geoData.results.length){ results.push({ p, location, error:true }); continue; }
-      const { latitude, longitude, name } = geoData.results[0];
+      const geoResult = await geocodeLocation(location);
+      if(!geoResult){ results.push({ p, location, error:true }); continue; }
+      const { latitude, longitude, name } = geoResult;
       const forecastRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&start_date=${p.deadline}&end_date=${p.deadline}`);
       const forecastData = await forecastRes.json();
       if(!forecastData.daily || !forecastData.daily.time || !forecastData.daily.time.length){ results.push({ p, location, error:true }); continue; }
