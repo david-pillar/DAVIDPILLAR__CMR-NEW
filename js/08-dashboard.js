@@ -62,7 +62,7 @@ function renderDashboard(){
 }
 var lastWeatherAutoAttempt = 0;
 function maybeAutoLoadWeather(){
-  // Skúša znova pre KAŽDÚ blížiacu sa svadbu, ktorá ešte nemá úspešne stiahnuté počasie
+  // Skúša znova pre KAŽDÚ blížiacu sa svadbu/stužkovú, ktorá ešte nemá úspešne stiahnuté počasie
   // (namiesto trvalého "len raz za reláciu" zámku, ktorý by sa natrvalo zaseknul po
   // jednom zlyhanom pokuse). Krátky cooldown len bráni zbytočnému bombardovaniu API
   // pri rýchlom prekliknutí medzi stránkami.
@@ -70,9 +70,8 @@ function maybeAutoLoadWeather(){
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+10);
   const cutoffStr = toLocalISODate(cutoff);
   const stillNeedsWeather = DATA.projects.some(p=>
-    p.type==='svadba' && p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr &&
-    p.wedding && (p.wedding.svadbaMiesto || p.wedding.sobasKostol) &&
-    !weatherCache[p.deadline]
+    p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr &&
+    getProjectWeatherLocation(p) && !weatherCache[p.deadline]
   );
   if(!stillNeedsWeather) return;
   const now = Date.now();

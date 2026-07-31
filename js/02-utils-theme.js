@@ -164,7 +164,22 @@ async function afterAuthReady(){
   checkPinLock();
   await loadAll();
 
+  // Ak z minulej relácie ostali offline zmeny, ktoré sa ešte nestihli odoslať do cloudu,
+  // loadAll vyššie práve načítal starší (ešte nesynchronizovaný) stav z Supabase — prepíš ho
+  // tými čakajúcimi zmenami, nech appka hneď ukazuje najnovší stav, a skús ich znova odoslať.
+  applyPendingQueueOntoData();
+  renderAll();
+  await flushPendingSync(true);
+
   if(currentUser) await maybeOfferLocalMigration(preCloudSnapshot, COLLECTION_KEYS);
+}
+function applyPendingQueueOntoData(){
+  const queue = getPendingSyncQueue();
+  Object.keys(queue).forEach(key=>{
+    if(key === 'settings') DATA.settings = Object.assign({}, DEFAULT_SETTINGS, queue[key]);
+    else if(key === 'pricing') PRICING = Object.assign({}, DEFAULT_PRICING, queue[key]);
+    else if(Object.prototype.hasOwnProperty.call(DATA, key)) DATA[key] = queue[key];
+  });
 }
 async function maybeOfferLocalMigration(preCloudSnapshot, collectionKeys){
   const cloudIsEmpty = !DATA.clients.length && !DATA.projects.length && !DATA.bookings.length && !DATA.invoices.length;
@@ -257,6 +272,55 @@ async function syncCollectionToSupabase(table, items){
     }
   }
 }
+// Jedno miesto, ktoré vie zapísať dáta pre daný kľúč do Supabase — používa ho saveKey aj
+// flushPendingSync, aby sa logika synchronizácie nikdy nerozišla na dvoch miestach.
+async function syncOneKeyToSupabase(key, value){
+  const map = SUPABASE_TABLE_MAP[key];
+  if(!map) return;
+  if(map.type === 'collection'){
+    await syncCollectionToSupabase(map.table, Array.isArray(value) ? value : []);
+  }else{
+    const { error } = await supabaseClient.from(map.table).upsert({ user_id: currentUser.id, data: value }, { onConflict:'user_id' });
+    if(error) throw error;
+  }
+}
+
+/* ===================== OFFLINE FRONTA =====================
+   Na svadbách/natáčaniach býva slabý alebo žiadny signál. Keď sa zápis do Supabase nepodarí,
+   zmena sa neschová chybovou hláškou navždy — uloží sa do "pendingSync" fronty v localStorage
+   (len posledná verzia pre daný kľúč, netreba históriu) a appka sama skúsi znova, hneď ako
+   sa vráti pripojenie (event 'online') alebo keď appku znova otvoríš/prepneš naspäť do nej. */
+var SLATE_PENDING_SYNC_KEY = 'slate:pendingSync';
+function getPendingSyncQueue(){
+  try{ return JSON.parse(localStorage.getItem(SLATE_PENDING_SYNC_KEY)) || {}; }catch(e){ return {}; }
+}
+function setPendingSyncQueue(q){
+  try{ localStorage.setItem(SLATE_PENDING_SYNC_KEY, JSON.stringify(q)); }catch(e){}
+}
+var flushPendingSyncInFlight = false;
+async function flushPendingSync(showSuccessToast){
+  if(!supabaseClient || !currentUser || flushPendingSyncInFlight) return;
+  const queue = getPendingSyncQueue();
+  const keys = Object.keys(queue);
+  if(!keys.length) return;
+  flushPendingSyncInFlight = true;
+  let succeededAny = false;
+  for(const key of keys){
+    try{
+      await syncOneKeyToSupabase(key, queue[key]);
+      delete queue[key];
+      succeededAny = true;
+    }catch(e){
+      // stále offline/chyba na tomto kľúči — necháme vo fronte, skúsime nabudúce
+    }
+  }
+  setPendingSyncQueue(queue);
+  flushPendingSyncInFlight = false;
+  if(succeededAny && showSuccessToast) showToast('✓ Zmeny uložené offline sa práve odoslali do cloudu');
+}
+window.addEventListener('online', ()=>flushPendingSync(true));
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') flushPendingSync(true); });
+
 async function saveKey(key, value){
   try{ localStorage.setItem('slate:'+key, JSON.stringify(value)); }
   catch(e){ showToast('Chyba pri ukladaní dát (možno je pamäť prehliadača plná)'); }
@@ -264,14 +328,14 @@ async function saveKey(key, value){
   const map = SUPABASE_TABLE_MAP[key];
   if(map && supabaseClient && currentUser){
     try{
-      if(map.type === 'collection'){
-        await syncCollectionToSupabase(map.table, Array.isArray(value) ? value : []);
-      }else{
-        const { error } = await supabaseClient.from(map.table).upsert({ user_id: currentUser.id, data: value }, { onConflict:'user_id' });
-        if(error) throw error;
-      }
+      await syncOneKeyToSupabase(key, value);
+      const queue = getPendingSyncQueue();
+      if(queue[key]){ delete queue[key]; setPendingSyncQueue(queue); }
     }catch(e){
-      showToast('⚠️ Zmena sa neuložila do cloudu (over pripojenie) — je uložená aspoň lokálne v tomto prehliadači');
+      const queue = getPendingSyncQueue();
+      queue[key] = value;
+      setPendingSyncQueue(queue);
+      showToast('📶 Si offline — zmena je bezpečne uložená lokálne a sama sa odošle do cloudu, hneď ako sa appka znova pripojí');
     }
   }
   writeAutoBackup();

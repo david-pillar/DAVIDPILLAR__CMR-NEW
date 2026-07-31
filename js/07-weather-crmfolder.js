@@ -17,6 +17,14 @@ function weatherCodeToEmoji(code){
   return label.split(' ')[0]; // WEATHER_CODE_MAP values are "emoji slovo" — just the emoji for compact display
 }
 var weatherCache = {}; // { 'YYYY-MM-DD': { code, tmax, tmin } } — used to show a small weather icon directly in the calendar cell.
+// Miesto konania podľa typu zákazky — zatiaľ majú vyplniteľné miesto len svadby (miesto hostiny
+// alebo kostol) a stužkové (miesto). Klip/Iné v appke zatiaľ nemajú vlastné pole na miesto, takže
+// pre ne nie je čo geokódovať.
+function getProjectWeatherLocation(p){
+  if(p.type==='svadba' && p.wedding) return p.wedding.svadbaMiesto || p.wedding.sobasKostol || '';
+  if(p.type==='stuzkova' && p.stuzkova) return p.stuzkova.miesto || '';
+  return '';
+}
 async function loadWeatherForecasts(){
   const container = document.getElementById('weatherForecastList');
   const todayStr = toLocalISODate(new Date());
@@ -24,13 +32,12 @@ async function loadWeatherForecasts(){
   const cutoffStr = toLocalISODate(cutoff);
 
   const upcoming = DATA.projects.filter(p=>
-    p.type==='svadba' && p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr &&
-    p.wedding && (p.wedding.svadbaMiesto || p.wedding.sobasKostol)
+    p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr && getProjectWeatherLocation(p)
   );
 
   const weatherPanel = document.getElementById('weatherPanel');
   if(!upcoming.length){
-    container.innerHTML = '<div class="empty">Žiadne svadby v najbližších 10 dňoch (alebo nemajú vyplnené miesto konania).</div>';
+    container.innerHTML = '<div class="empty">Žiadne svadby/stužkové v najbližších 10 dňoch (alebo nemajú vyplnené miesto konania).</div>';
     if(weatherPanel) weatherPanel.classList.remove('panel-attention');
     return;
   }
@@ -38,7 +45,7 @@ async function loadWeatherForecasts(){
 
   const results = [];
   for(const p of upcoming){
-    const location = p.wedding.svadbaMiesto || p.wedding.sobasKostol;
+    const location = getProjectWeatherLocation(p);
     try{
       const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=sk`);
       const geoData = await geoRes.json();
