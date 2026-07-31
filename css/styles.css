@@ -165,6 +165,10 @@
   body.theme-vibrant ::-webkit-scrollbar-thumb{background:#14b8a6;}
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  /* Poistka proti tomu, aby akýkoľvek prvok (dlhé číslo v stat-karte, veľa dlaždíc...)
+     roztiahol celú stránku do šírky a spôsobil vodorovné scrollovanie celej appky —
+     na mobile to vyzeralo, akoby bola aj horná lišta odrezaná/posunutá. */
+  html,body{overflow-x:hidden;}
   html,body{height:100%;overscroll-behavior:none;}
   html{scroll-behavior:smooth;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:.1px;}
@@ -272,7 +276,12 @@
   .stat-card{
     background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;
     box-shadow:var(--shadow-soft);transition:transform .15s var(--ease), box-shadow .15s var(--ease), border-color .15s var(--ease);
+    min-width:0;
   }
+  /* Bez min-width:0 grid buňka nikdy nezmrští kartu pod šírku najdlhšieho nezalomiteľného
+     textu (napr. veľká suma v eurách) — na mobile to vedelo roztiahnuť celý riadok aj mimo
+     obrazovky. overflow-wrap:anywhere je poistka pre extrémne dlhé sumy. */
+  .stat-num{overflow-wrap:anywhere;}
   .stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift);border-color:var(--text-faint);}
   .stat-card.stat-danger{
     border-color:#ff2b2b;background:linear-gradient(135deg, rgba(255,43,43,.14), var(--surface));
@@ -667,16 +676,22 @@
     .app{flex-direction:column;}
     .sidebar{
       width:100%;height:auto;position:sticky;top:0;flex-direction:row;align-items:center;
-      padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
-      overflow-x:auto;z-index:50;
+      padding:calc(14px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 14px calc(12px + env(safe-area-inset-left));
+      overflow-x:auto;z-index:50;gap:2px;
     }
     .brand{padding:0 10px 0 0;}
+    .brand-mark{width:40px;height:40px;}
     .brand-sub{display:none;}
-    nav{flex-direction:row;margin-top:0;}
+    .brand-name{font-size:22px;}
+    nav{flex-direction:row;margin-top:0;gap:4px;}
     .nav-item span:not(.nav-badge){display:none;}
-    .nav-item{padding:10px 9px;position:relative;}
+    /* Explicitne väčšia dotyková plocha aj ikony na mobile — pôvodná verzia bola na
+       reálnom telefóne príliš malá/stlačená, aj za cenu toho, že sa cez ~13 položiek
+       treba prescrollovať vodorovne. */
+    .nav-item{padding:13px 12px;position:relative;}
+    .nav-item svg{width:22px;height:22px;}
     .nav-item .nav-badge{
-      position:absolute;top:4px;right:4px;margin-left:0;min-width:8px;width:8px;height:8px;padding:0;font-size:0;
+      position:absolute;top:6px;right:6px;margin-left:0;min-width:9px;width:9px;height:9px;padding:0;font-size:0;
     }
     .sidebar-foot{display:none;}
     #themeToggleBtn{display:none;}
