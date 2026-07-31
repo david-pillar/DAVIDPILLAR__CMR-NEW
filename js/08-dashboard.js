@@ -54,11 +54,63 @@ function renderDashboard(){
   }).join('') : '<div class="empty">Žiadne blížiace sa termíny.</div>';
 
   renderYearlySummary(curYear);
+  renderTodoPanel();
   renderMissingMessages();
   renderAnniversaries();
   renderQuickNotes();
   checkBackupReminder();
   maybeAutoLoadWeather();
+}
+/* ===================== Jednotný TO-DO panel =====================
+   Zbiera na jedno miesto: nesplnené checklist položky z aktívnych zákaziek
+   + nezaplatené faktúry po splatnosti — namiesto preklikávania sa cez každú zákazku zvlášť. */
+function renderTodoPanel(){
+  const panel = document.getElementById('todoPanel');
+  const el = document.getElementById('todoList');
+  if(!panel || !el) return;
+  const todayStr = toLocalISODate(new Date());
+  const activeStatuses = ['dopyt','zabookovane','nakrutene','spracovane'];
+  const items = [];
+
+  DATA.invoices.forEach(i=>{
+    if(i.status==='neuhradena' && i.due && i.due < todayStr){
+      const client = DATA.clients.find(c=>c.id===i.clientId);
+      const project = DATA.projects.find(p=>p.id===i.projectId);
+      items.push({
+        urgency: 0, sortKey: i.due,
+        icon: '💸', title: `Faktúra ${i.number||'bez čísla'} po splatnosti`,
+        sub: `${client?client.name:'— bez klienta —'}${project?' · '+project.title:''} · splatnosť ${fmtDate(i.due)}`,
+        onclick: `openInvoiceModal('${i.id}')`
+      });
+    }
+  });
+
+  DATA.projects.forEach(p=>{
+    if(!activeStatuses.includes(p.status)) return;
+    (p.checklist||[]).forEach(item=>{
+      if(item.done) return;
+      items.push({
+        urgency: 1, sortKey: p.deadline || '9999-99-99',
+        icon: '☑️', title: item.text,
+        sub: `${p.title||'Bez názvu'}${p.deadline?' · termín '+fmtDate(p.deadline):''}`,
+        onclick: `openProjectModal('${p.id}')`
+      });
+    });
+  });
+
+  if(!items.length){
+    panel.classList.remove('panel-attention');
+    el.innerHTML = '<div class="empty">✓ Nič naliehavé — všetko pod kontrolou.</div>';
+    return;
+  }
+  items.sort((a,b)=> a.urgency-b.urgency || a.sortKey.localeCompare(b.sortKey));
+  panel.classList.add('panel-attention');
+  const MAX_SHOWN = 12;
+  const shown = items.slice(0, MAX_SHOWN);
+  el.innerHTML = shown.map(it=>`
+    <div class="list-row" onclick="${it.onclick}">
+      <div class="row-main"><div class="row-title">${it.icon} ${escapeHtml(it.title)}</div><div class="row-sub">${escapeHtml(it.sub)}</div></div>
+    </div>`).join('') + (items.length>MAX_SHOWN ? `<div class="row-sub" style="padding:8px 4px;">+ ${items.length-MAX_SHOWN} ďalších položiek</div>` : '');
 }
 var lastWeatherAutoAttempt = 0;
 function maybeAutoLoadWeather(){

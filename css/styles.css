@@ -329,6 +329,7 @@
     grid-template-areas:
       "bookings bookings projects projects weather weather"
       "bookings bookings projects projects weather weather"
+      "todo todo todo todo todo todo"
       "messages messages messages messages anniv anniv"
       "messages messages messages messages notes notes"
       "yearly yearly yearly yearly yearly yearly";
@@ -338,6 +339,7 @@
   }
   .bento-tile-bookings{grid-area:bookings;}
   .bento-tile-projects{grid-area:projects;}
+  .bento-tile-todo{grid-area:todo;display:flex;flex-direction:column;}
   .bento-tile-messages{grid-area:messages;display:flex;flex-direction:column;}
   .bento-tile-weather{grid-area:weather;}
   .bento-tile-anniv{grid-area:anniv;}
@@ -349,6 +351,7 @@
       grid-template-areas:
         "bookings projects"
         "weather weather"
+        "todo todo"
         "messages messages"
         "anniv notes"
         "yearly yearly";
@@ -357,7 +360,7 @@
   @media (max-width:760px){
     .bento-grid{
       grid-template-columns:1fr;
-      grid-template-areas:"bookings" "projects" "weather" "messages" "anniv" "notes" "yearly";
+      grid-template-areas:"bookings" "projects" "weather" "todo" "messages" "anniv" "notes" "yearly";
     }
   }
 

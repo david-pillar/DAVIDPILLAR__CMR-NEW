@@ -183,6 +183,31 @@ function exportInvoicesCsv(){
   downloadCsv(`slate-faktury-${toLocalISODate(new Date())}.csv`, headers, rows);
 }
 
+/* Ročný report pre účtovníctvo — mesačný rozpis obratu, uhradených faktúr, nákladov a zisku,
+   v rovnakej logike ako dashboardový "Ročný súhrn" (pozri renderYearlySummary). */
+function exportYearlyAccountingReport(year){
+  year = year || new Date().getFullYear();
+  const monthNames = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+  const headers = ['Mesiac','Počet zákaziek (podľa termínu)','Rozpočet zákaziek (€)','Uhradené faktúry (€)','Náklady (€)','Zisk: uhradené − náklady (€)'];
+  const rows = [];
+  let totalCount=0, totalBudget=0, totalPaid=0, totalExpenses=0;
+  for(let m=0; m<12; m++){
+    const monthStr = `${year}-${String(m+1).padStart(2,'0')}`;
+    const monthProjects = DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(monthStr));
+    const budget = monthProjects.reduce((s,p)=>s+(Number(p.budget)||0),0);
+    const paid = DATA.invoices.filter(i=>{
+      if(i.status!=='uhradena') return false;
+      const project = DATA.projects.find(p=>p.id===i.projectId);
+      const dateStr = (project && project.deadline) || i.due;
+      return dateStr && dateStr.startsWith(monthStr);
+    }).reduce((s,i)=>s+Number(i.amount||0),0);
+    const expenses = DATA.expenses.filter(e=>e.date && e.date.startsWith(monthStr)).reduce((s,e)=>s+Number(e.amount||0),0);
+    totalCount += monthProjects.length; totalBudget += budget; totalPaid += paid; totalExpenses += expenses;
+    rows.push([monthNames[m], monthProjects.length, budget.toFixed(2), paid.toFixed(2), expenses.toFixed(2), (paid-expenses).toFixed(2)]);
+  }
+  rows.push(['SPOLU', totalCount, totalBudget.toFixed(2), totalPaid.toFixed(2), totalExpenses.toFixed(2), (totalPaid-totalExpenses).toFixed(2)]);
+  downloadCsv(`slate-rocny-report-${year}.csv`, headers, rows);
+}
 function downloadBackup(){
   const payload = { exportedAt: new Date().toISOString(), clients: DATA.clients, bookings: DATA.bookings, projects: DATA.projects, invoices: DATA.invoices, expenses: DATA.expenses, settings: DATA.settings, pricing: PRICING };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

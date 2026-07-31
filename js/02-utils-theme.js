@@ -147,7 +147,7 @@ async function afterAuthReady(){
   // prepísať prázdnym cloudovým stavom, ak ide o nové/zatiaľ prázdne cloudové konto.
   // Vďaka tomu vieme po prihlásení ponúknuť jednorazové nahratie doterajších dát do Supabase.
   const preCloudSnapshot = {};
-  const COLLECTION_KEYS = ['clients','projects','bookings','invoices','expenses','vendors','quickNotes'];
+  const COLLECTION_KEYS = ['clients','projects','bookings','invoices','expenses','vendors','trash','quickNotes'];
   COLLECTION_KEYS.forEach(k=>{
     try{
       const raw = localStorage.getItem('slate:'+k);

@@ -174,13 +174,17 @@
           <h3>⏳ Zákazky s blížiacim sa termínom</h3>
           <div id="upcomingProjects"></div>
         </div>
+        <div class="panel bento-tile-todo" id="todoPanel">
+          <h3 style="margin-bottom:12px;">📌 Čo treba spraviť</h3>
+          <div id="todoList"></div>
+        </div>
         <div class="panel bento-tile-messages" id="missingMessagesPanel">
           <h3 style="margin-bottom:12px;">📨 Chýbajúce správy klientom</h3>
           <div id="missingMessagesList"></div>
         </div>
         <div class="panel bento-tile-weather" id="weatherPanel">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
-            <h3 style="margin:0;">🌦️ Počasie — svadby do 10 dní</h3>
+            <h3 style="margin:0;">🌦️ Počasie — zákazky do 16 dní</h3>
             <button class="btn ghost small" onclick="loadWeatherForecasts()">🔄</button>
           </div>
           <div id="weatherForecastList"><div class="empty">Predpoveď sa načíta automaticky, ak má niektorá zákazka do 16 dní vyplnené miesto konania (🔄 = ručné obnovenie, vyžaduje internet).</div></div>
@@ -198,7 +202,10 @@
           <div id="quickNotesList"></div>
         </div>
         <div class="panel bento-tile-yearly">
-          <h3 id="yearlySummaryTitle">Ročný súhrn</h3>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px;">
+            <h3 id="yearlySummaryTitle" style="margin:0;">Ročný súhrn</h3>
+            <button class="btn ghost small" onclick="exportYearlyAccountingReport()">📥 Report pre účtovníctvo</button>
+          </div>
           <div id="yearlySummary"></div>
         </div>
       </div>
