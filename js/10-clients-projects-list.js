@@ -79,15 +79,23 @@ function setQuickFilter(tag, year, btnEl){
 }
 /* ---- Veľký prehľadný filter podľa roka (dynamicky podľa toho, čo je v dátach,
    a naviac vždy zopár rokov dopredu, aby sa dalo plánovať skôr, než v nich vznikne prvá zákazka) ---- */
+function getYearTileDefaultMaxYear(){
+  return new Date().getFullYear() + 3;
+}
 function getYearTileMaxYear(){
   const curYear = new Date().getFullYear();
   const stored = Number(localStorage.getItem('slate:yearTileMaxYear'));
-  return stored && stored > curYear ? stored : curYear + 3;
+  return stored && stored > curYear ? stored : getYearTileDefaultMaxYear();
 }
 function extendYearTiles(){
   const newMax = getYearTileMaxYear() + 1;
   localStorage.setItem('slate:yearTileMaxYear', String(newMax));
   renderYearTileBar();
+}
+function resetYearTiles(){
+  localStorage.removeItem('slate:yearTileMaxYear');
+  renderYearTileBar();
+  showToast('Roky vrátené na pôvodný rozsah');
 }
 function renderYearTileBar(){
   const el = document.getElementById('yearTileBar');
@@ -100,6 +108,7 @@ function renderYearTileBar(){
   const sortedYears = Array.from(years).sort();
   const countFor = y => DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(y)).length;
   const allActive = !projectFilters.year;
+  const isExtended = maxYear > getYearTileDefaultMaxYear();
   el.innerHTML = `
     <div class="year-tile ${allActive?'active':''}" onclick="setYearFilter('')">
       <div class="year-tile-num">Všetky</div>
@@ -114,6 +123,10 @@ function renderYearTileBar(){
       <div class="year-tile-num">+</div>
       <div class="year-tile-count">Ďalší rok</div>
     </div>
+    ${isExtended ? `<div class="year-tile year-tile-add" onclick="resetYearTiles()" title="Vrátiť na pôvodný rozsah rokov">
+      <div class="year-tile-num">↺</div>
+      <div class="year-tile-count">Reset</div>
+    </div>` : ''}
   `;
 }
 function setYearFilter(year){
