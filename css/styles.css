@@ -293,6 +293,25 @@
     .year-tile-num{font-size:24px;}
   }
 
+  /* ---- Archív: vizuálne karty po rokoch (podobné ako year-tile, ale s detailmi/akciami) ---- */
+  .archive-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .archive-year-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px;box-shadow:var(--shadow-soft);display:flex;flex-direction:column;gap:12px;
+    transition:transform .15s var(--ease), box-shadow .15s var(--ease), border-color .15s var(--ease);
+  }
+  .archive-year-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lift);border-color:var(--text-faint);}
+  .archive-year-card.is-archived{border-style:dashed;background:var(--surface-2);}
+  .archive-year-num{
+    font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:.5px;color:var(--text);line-height:1;
+    display:flex;align-items:center;gap:10px;
+  }
+  .archive-year-badges{display:flex;gap:6px;flex-wrap:wrap;}
+  .archive-year-actions{display:flex;gap:8px;margin-top:auto;}
+  .archive-year-actions .btn{flex:1;justify-content:center;}
+  .archive-year-detail{border-top:1px solid var(--surface-3);margin-top:2px;padding-top:10px;}
+  .archive-year-detail .list-row{padding:8px 2px;}
+
   .grid-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:26px;}
   .stat-card{
     background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;

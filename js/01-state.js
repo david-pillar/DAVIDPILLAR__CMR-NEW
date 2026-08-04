@@ -306,8 +306,10 @@ async function restoreArchivedYear(year){
   showToast(`Rok ${year} obnovený (${count} položiek)`);
 }
 var ARCHIVE_TYPE_LABELS = { projects:'zákaziek', bookings:'rezervácií', invoices:'faktúr', expenses:'nákladov' };
-function archiveSummaryLine(s){
-  return Object.keys(ARCHIVE_TYPE_LABELS).map(k=> s[k] ? `${s[k]} ${ARCHIVE_TYPE_LABELS[k]}` : '').filter(Boolean).join(' · ') || 'žiadne položky';
+var ARCHIVE_TYPE_ICONS = { projects:'💍', bookings:'📅', invoices:'🧾', expenses:'💸' };
+function archiveBadgesHtml(s){
+  const badges = Object.keys(ARCHIVE_TYPE_LABELS).map(k=> s[k] ? `<span class="tag-pill">${ARCHIVE_TYPE_ICONS[k]} ${s[k]} ${ARCHIVE_TYPE_LABELS[k]}</span>` : '').filter(Boolean).join('');
+  return badges || '<span class="tag-pill">žiadne položky</span>';
 }
 function renderArchive(){
   const activeEl = document.getElementById('archiveActiveYears');
@@ -319,21 +321,33 @@ function renderArchive(){
   const activeYearKeys = Object.keys(activeYears).sort();
   const archivedYearKeys = Object.keys(archivedYears).sort();
 
+  const statYearsEl = document.getElementById('archiveStatYears');
+  const statItemsEl = document.getElementById('archiveStatItems');
+  if(statYearsEl) statYearsEl.textContent = archivedYearKeys.length;
+  if(statItemsEl){
+    const totalItems = archivedYearKeys.reduce((sum,y)=> sum + Object.values(archivedYears[y]).reduce((s,n)=>s+n,0), 0);
+    statItemsEl.textContent = totalItems;
+  }
+
   activeEl.innerHTML = activeYearKeys.length ? activeYearKeys.map(y=>`
-    <div class="list-row">
-      <div class="row-main"><div class="row-title">${y}</div><div class="row-sub">${archiveSummaryLine(activeYears[y])}</div></div>
-      <button class="btn ghost small" onclick="archiveYear('${y}')">📦 Archivovať rok ${y}</button>
+    <div class="archive-year-card">
+      <div class="archive-year-num">📁 ${y}</div>
+      <div class="archive-year-badges">${archiveBadgesHtml(activeYears[y])}</div>
+      <div class="archive-year-actions">
+        <button class="btn ghost small" onclick="archiveYear('${y}')">📦 Archivovať rok ${y}</button>
+      </div>
     </div>`).join('') : '<div class="empty">Žiadne nearchivované roky s dátami.</div>';
 
   archivedEl.innerHTML = archivedYearKeys.length ? archivedYearKeys.map(y=>`
-    <div class="list-row">
-      <div class="row-main"><div class="row-title">🗄️ ${y}</div><div class="row-sub">${archiveSummaryLine(archivedYears[y])}</div></div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn ghost small" onclick="toggleArchiveYearDetail('${y}')">Zobraziť zákazky</button>
-        <button class="btn ghost small" onclick="restoreArchivedYear('${y}')">↺ Obnoviť rok</button>
+    <div class="archive-year-card is-archived">
+      <div class="archive-year-num">🗄️ ${y}</div>
+      <div class="archive-year-badges">${archiveBadgesHtml(archivedYears[y])}</div>
+      <div class="archive-year-actions">
+        <button class="btn ghost small" onclick="toggleArchiveYearDetail('${y}')">👁️ Zobraziť</button>
+        <button class="btn small" onclick="restoreArchivedYear('${y}')">↺ Obnoviť</button>
       </div>
-    </div>
-    <div id="archiveDetail-${y}" style="display:none;padding:2px 4px 14px;"></div>`).join('') : '<div class="empty">Zatiaľ žiadny archivovaný rok.</div>';
+      <div id="archiveDetail-${y}" class="archive-year-detail" style="display:none;"></div>
+    </div>`).join('') : '<div class="empty">Zatiaľ žiadny archivovaný rok.</div>';
 }
 function toggleArchiveYearDetail(year){
   const el = document.getElementById('archiveDetail-'+year);

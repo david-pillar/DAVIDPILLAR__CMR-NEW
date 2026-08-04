@@ -564,14 +564,17 @@
       <div class="topbar">
         <div><h1 class="page-title">Archív</h1><div class="page-sub">Schovaj celé staré roky z bežných zoznamov — nič sa nevymaže, dá sa kedykoľvek vrátiť späť</div></div>
       </div>
-      <div class="panel" style="margin-bottom:16px;">
-        <h3 style="margin-bottom:12px;">Roky na archivovanie</h3>
-        <div id="archiveActiveYears"></div>
+
+      <div class="grid-stats">
+        <div class="stat-card"><div class="stat-num" id="archiveStatYears">0</div><div class="stat-label">Archivovaných rokov</div></div>
+        <div class="stat-card"><div class="stat-num" id="archiveStatItems">0</div><div class="stat-label">Položiek v archíve</div></div>
       </div>
-      <div class="panel">
-        <h3 style="margin-bottom:12px;">🗄️ Archivované roky</h3>
-        <div id="archiveArchivedYears"></div>
-      </div>
+
+      <h3 style="margin-bottom:12px;">📤 Roky na archivovanie</h3>
+      <div class="archive-grid" id="archiveActiveYears" style="margin-bottom:30px;"></div>
+
+      <h3 style="margin-bottom:12px;">🗄️ Archivované roky</h3>
+      <div class="archive-grid" id="archiveArchivedYears"></div>
     </div>
 
     <!-- TRASH -->
