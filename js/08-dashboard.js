@@ -6,33 +6,34 @@ function renderDashboard(){
   const today = new Date();
   document.getElementById('todayDate').textContent = today.toLocaleDateString('sk-SK',{day:'2-digit',month:'2-digit',year:'numeric'});
   const todayStr = toLocalISODate(today);
-  const todaysBookings = DATA.bookings.filter(b=>b.date===todayStr);
+  const todaysBookings = DATA.bookings.filter(b=>!b.archived && b.date===todayStr);
   document.getElementById('todayCount').textContent = todaysBookings.length;
 
   const activeStatuses = ['dopyt','zabookovane','nakrutene','spracovane'];
-  const activeProjects = DATA.projects.filter(p=>activeStatuses.includes(p.status));
+  const activeProjects = DATA.projects.filter(p=>!p.archived && activeStatuses.includes(p.status));
   document.getElementById('activeCount').textContent = activeProjects.length;
 
   document.getElementById('statClients').textContent = DATA.clients.length;
 
   const curMonth = today.getMonth(), curYear = today.getFullYear();
   const monthBookings = DATA.bookings.filter(b=>{
+    if(b.archived) return false;
     const d = new Date(b.date+'T00:00:00');
     return d.getMonth()===curMonth && d.getFullYear()===curYear;
   });
   document.getElementById('statBookings').textContent = monthBookings.length;
 
-  const unpaid = DATA.invoices.filter(i=>i.status==='neuhradena').reduce((s,i)=>s+Number(i.amount||0),0);
+  const unpaid = DATA.invoices.filter(i=>!i.archived && i.status==='neuhradena').reduce((s,i)=>s+Number(i.amount||0),0);
   document.getElementById('statUnpaid').textContent = fmtMoney(unpaid);
   const paidThisMonth = DATA.invoices.filter(i=>{
-    if(i.status!=='uhradena' || !i.due) return false;
+    if(i.archived || i.status!=='uhradena' || !i.due) return false;
     const d = new Date(i.due+'T00:00:00');
     return d.getMonth()===curMonth && d.getFullYear()===curYear;
   }).reduce((s,i)=>s+Number(i.amount||0),0);
   document.getElementById('statPaid').textContent = fmtMoney(paidThisMonth);
 
   // upcoming bookings
-  const upcoming = DATA.bookings.filter(b=>b.date>=todayStr).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,5);
+  const upcoming = DATA.bookings.filter(b=>!b.archived && b.date>=todayStr).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).slice(0,5);
   const ub = document.getElementById('upcomingBookings');
   ub.innerHTML = upcoming.length ? upcoming.map(b=>{
     const client = DATA.clients.find(c=>c.id===b.clientId);
@@ -43,7 +44,7 @@ function renderDashboard(){
   }).join('') : '<div class="empty">Žiadne nadchádzajúce rezervácie.</div>';
 
   // upcoming projects by deadline
-  const upcomingProj = DATA.projects.filter(p=>p.deadline && activeStatuses.includes(p.status)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,5);
+  const upcomingProj = DATA.projects.filter(p=>!p.archived && p.deadline && activeStatuses.includes(p.status)).sort((a,b)=>a.deadline.localeCompare(b.deadline)).slice(0,5);
   const up = document.getElementById('upcomingProjects');
   up.innerHTML = upcomingProj.length ? upcomingProj.map(p=>{
     const client = DATA.clients.find(c=>c.id===p.clientId);
@@ -73,7 +74,7 @@ function renderTodoPanel(){
   const items = [];
 
   DATA.invoices.forEach(i=>{
-    if(i.status==='neuhradena' && i.due && i.due < todayStr){
+    if(!i.archived && i.status==='neuhradena' && i.due && i.due < todayStr){
       const client = DATA.clients.find(c=>c.id===i.clientId);
       const project = DATA.projects.find(p=>p.id===i.projectId);
       items.push({
@@ -86,7 +87,7 @@ function renderTodoPanel(){
   });
 
   DATA.projects.forEach(p=>{
-    if(!activeStatuses.includes(p.status)) return;
+    if(p.archived || !activeStatuses.includes(p.status)) return;
     (p.checklist||[]).forEach(item=>{
       if(item.done) return;
       items.push({
@@ -122,7 +123,7 @@ function maybeAutoLoadWeather(){
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate()+16);
   const cutoffStr = toLocalISODate(cutoff);
   const stillNeedsWeather = DATA.projects.some(p=>
-    p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr &&
+    !p.archived && p.deadline && p.deadline>=todayStr && p.deadline<=cutoffStr &&
     getProjectWeatherLocation(p) && !weatherCache[p.deadline]
   );
   if(!stillNeedsWeather) return;
@@ -163,6 +164,8 @@ function renderAnniversaries(){
   const today = new Date();
   const windowDays = 30;
   const upcoming = [];
+  // Zámerne NEfiltrujeme p.archived — výročia potrebujú aj staré (archivované) svadby,
+  // inak by po archivácii starého roka výročie prestalo appke pripomínať.
   DATA.projects.forEach(p=>{
     if(p.type!=='svadba' || !p.deadline) return;
     const wDate = new Date(p.deadline+'T00:00:00');

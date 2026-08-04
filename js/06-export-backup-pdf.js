@@ -171,7 +171,7 @@ function exportProjectsCsv(){
 function exportInvoicesCsv(){
   const typeLabels = { cela:'Celá suma', zaloha:'Záloha', doplatok:'Doplatok' };
   const headers = ['Číslo faktúry','Klient','Zákazka','Typ','Základ (€)','DPH sadzba (%)','DPH suma (€)','Suma spolu (€)','Splatnosť','Stav','Odoslaná'];
-  const rows = DATA.invoices.map(i=>{
+  const rows = DATA.invoices.filter(i=>!i.archived).map(i=>{
     const client = DATA.clients.find(c=>c.id===i.clientId);
     const project = DATA.projects.find(p=>p.id===i.projectId);
     return [

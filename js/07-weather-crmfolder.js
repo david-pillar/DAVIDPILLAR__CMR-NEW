@@ -303,6 +303,7 @@ document.getElementById('nav').addEventListener('click', (e)=>{
   if(view==='expenses') renderExpenses();
   if(view==='vendors') renderVendors();
   if(view==='trash') renderTrash();
+  if(view==='archive') renderArchive();
 });
 
 document.getElementById('companyNameInput').addEventListener('change', (e)=>{

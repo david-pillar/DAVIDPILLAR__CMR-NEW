@@ -177,6 +177,7 @@ function getExpectedMessageStatus(project){
 }
 function getProjectsWithMissingMessages(){
   return DATA.projects
+    .filter(p=>!p.archived)
     .map(p=>({ project:p, missing: getExpectedMessageStatus(p).filter(i=>!i.sent) }))
     .filter(x=>x.missing.length>0);
 }

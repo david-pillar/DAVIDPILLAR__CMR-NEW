@@ -242,6 +242,116 @@ function renderTrash(){
   }).join('');
 }
 
+/* ===================== ARCHÍV ROKOV =====================
+   Namiesto mazania alebo presúvania dát do inej kolekcie appka len označí každý záznam
+   z daného roka príznakom "archived: true". Dáta ostávajú nedotknuté (napr. kvôli
+   ročnému reportu pre účtovníctvo), len sa schovajú z bežných zoznamov (Zákazky, Kalendár,
+   Faktúry, Náklady, dashboard). Kedykoľvek sa dá rok vrátiť späť tlačidlom "Obnoviť". */
+var ARCHIVE_COLLECTIONS = ['projects','bookings','invoices','expenses'];
+function getYearForArchiveRecord(type, item){
+  if(type==='projects') return item.deadline ? item.deadline.slice(0,4) : null;
+  if(type==='bookings') return item.date ? item.date.slice(0,4) : null;
+  if(type==='expenses') return item.date ? item.date.slice(0,4) : null;
+  if(type==='invoices'){
+    if(item.due) return item.due.slice(0,4);
+    const project = DATA.projects.find(p=>p.id===item.projectId);
+    return (project && project.deadline) ? project.deadline.slice(0,4) : null;
+  }
+  return null;
+}
+function getArchiveYearsSummary(archivedFlag){
+  const map = {};
+  ARCHIVE_COLLECTIONS.forEach(coll=>{
+    DATA[coll].forEach(item=>{
+      if(!!item.archived !== archivedFlag) return;
+      const y = getYearForArchiveRecord(coll, item);
+      if(!y) return;
+      if(!map[y]) map[y] = { projects:0, bookings:0, invoices:0, expenses:0 };
+      map[y][coll]++;
+    });
+  });
+  return map;
+}
+async function archiveYear(year){
+  const summary = getArchiveYearsSummary(false)[year] || {};
+  const total = Object.values(summary).reduce((s,n)=>s+n,0);
+  if(!confirm(`Naozaj archivovať rok ${year}? Zákazky, rezervácie, faktúry aj náklady z tohto roka (${total} položiek) sa schovajú z bežných zoznamov. Dáta sa nezmažú — rok vieš kedykoľvek vrátiť späť v Archíve.`)) return;
+  let count = 0;
+  ARCHIVE_COLLECTIONS.forEach(coll=>{
+    DATA[coll].forEach(item=>{
+      if(!item.archived && getYearForArchiveRecord(coll, item)===String(year)){
+        item.archived = true;
+        count++;
+      }
+    });
+  });
+  for(const coll of ARCHIVE_COLLECTIONS){ await saveKey(coll, DATA[coll]); }
+  renderAll();
+  renderArchive();
+  showToast(`Rok ${year} archivovaný (${count} položiek)`);
+}
+async function restoreArchivedYear(year){
+  let count = 0;
+  ARCHIVE_COLLECTIONS.forEach(coll=>{
+    DATA[coll].forEach(item=>{
+      if(item.archived && getYearForArchiveRecord(coll, item)===String(year)){
+        delete item.archived;
+        count++;
+      }
+    });
+  });
+  for(const coll of ARCHIVE_COLLECTIONS){ await saveKey(coll, DATA[coll]); }
+  renderAll();
+  renderArchive();
+  showToast(`Rok ${year} obnovený (${count} položiek)`);
+}
+var ARCHIVE_TYPE_LABELS = { projects:'zákaziek', bookings:'rezervácií', invoices:'faktúr', expenses:'nákladov' };
+function archiveSummaryLine(s){
+  return Object.keys(ARCHIVE_TYPE_LABELS).map(k=> s[k] ? `${s[k]} ${ARCHIVE_TYPE_LABELS[k]}` : '').filter(Boolean).join(' · ') || 'žiadne položky';
+}
+function renderArchive(){
+  const activeEl = document.getElementById('archiveActiveYears');
+  const archivedEl = document.getElementById('archiveArchivedYears');
+  if(!activeEl || !archivedEl) return;
+
+  const activeYears = getArchiveYearsSummary(false);
+  const archivedYears = getArchiveYearsSummary(true);
+  const activeYearKeys = Object.keys(activeYears).sort();
+  const archivedYearKeys = Object.keys(archivedYears).sort();
+
+  activeEl.innerHTML = activeYearKeys.length ? activeYearKeys.map(y=>`
+    <div class="list-row">
+      <div class="row-main"><div class="row-title">${y}</div><div class="row-sub">${archiveSummaryLine(activeYears[y])}</div></div>
+      <button class="btn ghost small" onclick="archiveYear('${y}')">📦 Archivovať rok ${y}</button>
+    </div>`).join('') : '<div class="empty">Žiadne nearchivované roky s dátami.</div>';
+
+  archivedEl.innerHTML = archivedYearKeys.length ? archivedYearKeys.map(y=>`
+    <div class="list-row">
+      <div class="row-main"><div class="row-title">🗄️ ${y}</div><div class="row-sub">${archiveSummaryLine(archivedYears[y])}</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost small" onclick="toggleArchiveYearDetail('${y}')">Zobraziť zákazky</button>
+        <button class="btn ghost small" onclick="restoreArchivedYear('${y}')">↺ Obnoviť rok</button>
+      </div>
+    </div>
+    <div id="archiveDetail-${y}" style="display:none;padding:2px 4px 14px;"></div>`).join('') : '<div class="empty">Zatiaľ žiadny archivovaný rok.</div>';
+}
+function toggleArchiveYearDetail(year){
+  const el = document.getElementById('archiveDetail-'+year);
+  if(!el) return;
+  if(el.style.display==='none' || !el.style.display){
+    const projects = DATA.projects.filter(p=>p.archived && getYearForArchiveRecord('projects', p)===String(year));
+    el.innerHTML = projects.length ? projects.map(p=>{
+      const client = DATA.clients.find(c=>c.id===p.clientId);
+      return `<div class="list-row" onclick="openProjectModal('${p.id}')">
+        <div class="row-main"><div class="row-title">${escapeHtml(p.title||'Bez názvu')}</div><div class="row-sub">${client?escapeHtml(client.name):'—'}${p.deadline?' · '+fmtDate(p.deadline):''}</div></div>
+      </div>`;
+    }).join('') : '<div class="empty">Žiadne archivované zákazky v tomto roku (archivované sú len rezervácie/faktúry/náklady).</div>';
+    el.style.display = 'block';
+  }else{
+    el.style.display = 'none';
+  }
+}
+
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 /* ---- Theme toggle: "Filmová klapka" (tmavá, predvolená) <-> "Elegantný" (svetlý) ---- */
 var THEME_CYCLE = ['film','vibrant','elegant'];

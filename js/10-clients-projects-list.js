@@ -27,6 +27,7 @@ function renderClients(){
 var projectFilters = { clientId:'', tag:'', year:'', sort:'deadline-asc' };
 function getFilteredProjects(){
   const filtered = DATA.projects.filter(p=>{
+    if(p.archived) return false;
     if(projectFilters.clientId && p.clientId !== projectFilters.clientId) return false;
     if(projectFilters.tag){
       const q = projectFilters.tag.toLowerCase().trim();
@@ -101,18 +102,19 @@ function renderYearTileBar(){
   const el = document.getElementById('yearTileBar');
   if(!el) return;
   const years = new Set();
-  DATA.projects.forEach(p=>{ if(p.deadline) years.add(p.deadline.slice(0,4)); });
+  DATA.projects.forEach(p=>{ if(p.deadline && !p.archived) years.add(p.deadline.slice(0,4)); });
   const curYear = new Date().getFullYear();
   const maxYear = getYearTileMaxYear();
   for(let y=curYear; y<=maxYear; y++) years.add(String(y));
   const sortedYears = Array.from(years).sort();
-  const countFor = y => DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(y)).length;
+  const countFor = y => DATA.projects.filter(p=>!p.archived && p.deadline && p.deadline.startsWith(y)).length;
   const allActive = !projectFilters.year;
   const isExtended = maxYear > getYearTileDefaultMaxYear();
+  const visibleCount = DATA.projects.filter(p=>!p.archived).length;
   el.innerHTML = `
     <div class="year-tile ${allActive?'active':''}" onclick="setYearFilter('')">
       <div class="year-tile-num">Všetky</div>
-      <div class="year-tile-count">${DATA.projects.length} zákaziek</div>
+      <div class="year-tile-count">${visibleCount} zákaziek</div>
     </div>
     ${sortedYears.map(y=>`
     <div class="year-tile ${projectFilters.year===y?'active':''}" onclick="setYearFilter('${y}')">
@@ -198,12 +200,13 @@ function selectProjectStatusTab(status){
 /* ===================== RENDER: INVOICES ===================== */
 function renderInvoices(){
   const todayStr = toLocalISODate(new Date());
-  const unpaid = DATA.invoices.filter(i=>i.status==='neuhradena').reduce((s,i)=>s+Number(i.amount||0),0);
-  const paid = DATA.invoices.filter(i=>i.status==='uhradena').reduce((s,i)=>s+Number(i.amount||0),0);
-  const overdueCount = DATA.invoices.filter(i=>i.status==='neuhradena' && i.due && i.due<todayStr).length;
+  const visibleInvoices = DATA.invoices.filter(i=>!i.archived);
+  const unpaid = visibleInvoices.filter(i=>i.status==='neuhradena').reduce((s,i)=>s+Number(i.amount||0),0);
+  const paid = visibleInvoices.filter(i=>i.status==='uhradena').reduce((s,i)=>s+Number(i.amount||0),0);
+  const overdueCount = visibleInvoices.filter(i=>i.status==='neuhradena' && i.due && i.due<todayStr).length;
   document.getElementById('invUnpaidTotal').textContent = fmtMoney(unpaid);
   document.getElementById('invPaidTotal').textContent = fmtMoney(paid);
-  document.getElementById('invCountTotal').textContent = DATA.invoices.length;
+  document.getElementById('invCountTotal').textContent = visibleInvoices.length;
   const overdueEl = document.getElementById('invOverdueCount');
   if(overdueEl) overdueEl.textContent = overdueCount;
   const overdueCardEl = document.getElementById('invOverdueCard');
@@ -211,10 +214,10 @@ function renderInvoices(){
 
   const tbody = document.getElementById('invoicesTable');
   const empty = document.getElementById('invoicesEmpty');
-  if(!DATA.invoices.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  if(!visibleInvoices.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display='none';
-  selectedInvoiceIds = selectedInvoiceIds.filter(id=>DATA.invoices.some(i=>i.id===id));
-  tbody.innerHTML = DATA.invoices.slice().sort((a,b)=>(b.due||'').localeCompare(a.due||'')).map(i=>{
+  selectedInvoiceIds = selectedInvoiceIds.filter(id=>visibleInvoices.some(i=>i.id===id));
+  tbody.innerHTML = visibleInvoices.slice().sort((a,b)=>(b.due||'').localeCompare(a.due||'')).map(i=>{
     const client = DATA.clients.find(c=>c.id===i.clientId);
     const isOverdue = i.status==='neuhradena' && i.due && i.due<todayStr;
     const statusPill = isOverdue

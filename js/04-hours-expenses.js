@@ -21,6 +21,7 @@ function renderHours(){
   const projectRows = [];
 
   DATA.projects.forEach(p=>{
+    if(p.archived) return;
     if(hoursTypeFilter && p.type !== hoursTypeFilter) return;
     const entries = p.timeEntries || [];
     if(!entries.length) return;
@@ -137,7 +138,12 @@ async function saveExpense(){
     projectId: document.getElementById('exp-project').value
   };
   const idx = DATA.expenses.findIndex(e=>e.id===id);
-  if(idx>-1) DATA.expenses[idx]=expense; else DATA.expenses.push(expense);
+  if(idx>-1){
+    if(DATA.expenses[idx].archived) expense.archived = true; // uloženie úpravy nesmie tichým spôsobom vytiahnuť náklad z archívu
+    DATA.expenses[idx]=expense;
+  }else{
+    DATA.expenses.push(expense);
+  }
   await saveKey('expenses', DATA.expenses);
   closeModal('modal-expense'); renderAll(); if(document.getElementById('view-expenses').classList.contains('active')) renderExpenses();
   showToast('Náklad uložený');
@@ -156,17 +162,18 @@ function renderExpenses(){
   const todayStr = toLocalISODate(new Date());
   const curMonth = todayStr.slice(0,7);
   const curYear = todayStr.slice(0,4);
+  const visibleExpenses = DATA.expenses.filter(e=>!e.archived);
 
-  const totalAll = DATA.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
-  const totalMonth = DATA.expenses.filter(e=>e.date && e.date.slice(0,7)===curMonth).reduce((s,e)=>s+Number(e.amount||0),0);
-  const totalYear = DATA.expenses.filter(e=>e.date && e.date.slice(0,4)===curYear).reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalAll = visibleExpenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalMonth = visibleExpenses.filter(e=>e.date && e.date.slice(0,7)===curMonth).reduce((s,e)=>s+Number(e.amount||0),0);
+  const totalYear = visibleExpenses.filter(e=>e.date && e.date.slice(0,4)===curYear).reduce((s,e)=>s+Number(e.amount||0),0);
 
   document.getElementById('expTotalAll').textContent = fmtMoney(totalAll);
   document.getElementById('expTotalMonth').textContent = fmtMoney(totalMonth);
   document.getElementById('expTotalYear').textContent = fmtMoney(totalYear);
 
   const revenueThisYear = DATA.projects
-    .filter(p=>p.deadline && p.deadline.slice(0,4)===curYear)
+    .filter(p=>!p.archived && p.deadline && p.deadline.slice(0,4)===curYear)
     .reduce((s,p)=>s+(Number(p.budget)||0),0);
   const netProfit = revenueThisYear - totalYear;
   const netEl = document.getElementById('expNetProfit');
@@ -175,12 +182,12 @@ function renderExpenses(){
 
   const tbody = document.getElementById('expensesTable');
   const emptyEl = document.getElementById('expensesEmpty');
-  if(!DATA.expenses.length){
+  if(!visibleExpenses.length){
     tbody.innerHTML = '';
     emptyEl.style.display = 'block';
   }else{
     emptyEl.style.display = 'none';
-    tbody.innerHTML = DATA.expenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(e=>{
+    tbody.innerHTML = visibleExpenses.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(e=>{
       const project = DATA.projects.find(p=>p.id===e.projectId);
       return `<tr onclick="openExpenseModal('${e.id}')" style="cursor:pointer;">
         <td class="num">${e.date?fmtDate(e.date):'—'}</td>
@@ -193,7 +200,7 @@ function renderExpenses(){
   }
 
   const categoryTotals = {};
-  DATA.expenses.forEach(e=>{ const c = e.category||'ine'; categoryTotals[c] = (categoryTotals[c]||0) + Number(e.amount||0); });
+  visibleExpenses.forEach(e=>{ const c = e.category||'ine'; categoryTotals[c] = (categoryTotals[c]||0) + Number(e.amount||0); });
   const catKeys = Object.keys(categoryTotals);
   if(typeof Chart === 'undefined') return;
   if(chartExpensesCategory) chartExpensesCategory.destroy();

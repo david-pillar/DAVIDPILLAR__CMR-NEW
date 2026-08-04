@@ -87,7 +87,12 @@ async function saveInvoice(){
     }
   }
   const idx = DATA.invoices.findIndex(i=>i.id===id);
-  if(idx>-1) DATA.invoices[idx]=invoice; else DATA.invoices.push(invoice);
+  if(idx>-1){
+    if(DATA.invoices[idx].archived) invoice.archived = true; // uloženie úpravy nesmie tichým spôsobom vytiahnuť faktúru z archívu
+    DATA.invoices[idx]=invoice;
+  }else{
+    DATA.invoices.push(invoice);
+  }
   await saveKey('invoices', DATA.invoices);
   if(invoice.projectId){
     const relatedProject = DATA.projects.find(p=>p.id===invoice.projectId);

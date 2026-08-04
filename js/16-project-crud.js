@@ -246,7 +246,12 @@ async function saveProject(){
   };
 
   const idx = DATA.projects.findIndex(p=>p.id===id);
-  if(idx>-1) DATA.projects[idx]=project; else DATA.projects.push(project);
+  if(idx>-1){
+    if(DATA.projects[idx].archived) project.archived = true; // uloženie úpravy nesmie tichým spôsobom vytiahnuť zákazku z archívu
+    DATA.projects[idx]=project;
+  }else{
+    DATA.projects.push(project);
+  }
   await saveKey('projects', DATA.projects);
   syncProjectFolder(project);
   closeProjectForm(); showToast('Zákazka uložená');

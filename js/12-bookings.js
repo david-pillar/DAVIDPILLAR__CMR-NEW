@@ -38,7 +38,7 @@ async function saveBooking(){
   const tags = document.getElementById('bk-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
   const date = document.getElementById('bk-date').value;
 
-  const conflicting = DATA.bookings.filter(b=>b.id!==id && b.date===date);
+  const conflicting = DATA.bookings.filter(b=>b.id!==id && b.date===date && !b.archived);
   if(conflicting.length){
     const names = conflicting.map(b=>b.title||'bez názvu').join(', ');
     const proceed = confirm(`Na ${fmtDate(date)} už máš rezerváciu: ${names}.\n\nChceš aj tak uložiť túto rezerváciu na rovnaký deň?`);
@@ -56,7 +56,12 @@ async function saveBooking(){
     notes: document.getElementById('bk-notes').value.trim()
   };
   const idx = DATA.bookings.findIndex(b=>b.id===id);
-  if(idx>-1) DATA.bookings[idx]=booking; else DATA.bookings.push(booking);
+  if(idx>-1){
+    if(DATA.bookings[idx].archived) booking.archived = true; // uloženie úpravy nesmie tichým spôsobom vytiahnuť rezerváciu z archívu
+    DATA.bookings[idx]=booking;
+  }else{
+    DATA.bookings.push(booking);
+  }
   await saveKey('bookings', DATA.bookings);
   closeModal('modal-booking'); renderAll(); showToast('Rezervácia uložená');
 }
@@ -74,7 +79,7 @@ async function syncProjectsToCalendar(){
   const existingProjectIds = new Set(DATA.bookings.filter(b=>b.projectId).map(b=>b.projectId));
   let created = 0, updated = 0;
   DATA.projects.forEach(p=>{
-    if(!p.deadline) return;
+    if(!p.deadline || p.archived) return;
     const location = (p.wedding && p.wedding.svadbaMiesto) || (p.stuzkova && p.stuzkova.miesto) || '';
     const time = (p.wedding && p.wedding.sobasCas) || '';
     if(existingProjectIds.has(p.id)){
@@ -107,7 +112,7 @@ function exportICS(){
   if(!DATA.bookings.length){ showToast('Zatiaľ nemáš žiadne rezervácie na export'); return; }
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SLATE//Produkcny manazer//SK','CALSCALE:GREGORIAN'];
   DATA.bookings.forEach(b=>{
-    if(!b.date) return;
+    if(!b.date || b.archived) return;
     const client = DATA.clients.find(c=>c.id===b.clientId);
     const dateStr = b.date.replace(/-/g,'');
     let dtStart, dtEnd, allDay = !b.time;

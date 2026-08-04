@@ -4,6 +4,7 @@
 
 function getFilteredBookings(){
   return DATA.bookings.filter(b=>{
+    if(b.archived) return false;
     if(calFilters.clientId && b.clientId !== calFilters.clientId) return false;
     if(calFilters.status && b.status !== calFilters.status) return false;
     if(calFilters.tag){
