@@ -77,6 +77,35 @@ function setQuickFilter(tag, year, btnEl){
   if(btnEl) btnEl.classList.add('active');
   renderProjects();
 }
+/* ---- Veľký prehľadný filter podľa roka (dynamicky podľa toho, čo je v dátach) ---- */
+function renderYearTileBar(){
+  const el = document.getElementById('yearTileBar');
+  if(!el) return;
+  const years = new Set();
+  DATA.projects.forEach(p=>{ if(p.deadline) years.add(p.deadline.slice(0,4)); });
+  const curYear = new Date().getFullYear();
+  years.add(String(curYear));
+  years.add(String(curYear+1));
+  const sortedYears = Array.from(years).sort();
+  const countFor = y => DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(y)).length;
+  const allActive = !projectFilters.year;
+  el.innerHTML = `
+    <div class="year-tile ${allActive?'active':''}" onclick="setYearFilter('')">
+      <div class="year-tile-num">Všetky</div>
+      <div class="year-tile-count">${DATA.projects.length} zákaziek</div>
+    </div>
+    ${sortedYears.map(y=>`
+    <div class="year-tile ${projectFilters.year===y?'active':''}" onclick="setYearFilter('${y}')">
+      <div class="year-tile-num">${y}</div>
+      <div class="year-tile-count">${countFor(y)} zákaziek</div>
+    </div>`).join('')}
+  `;
+}
+function setYearFilter(year){
+  projectFilters.year = year;
+  renderYearTileBar();
+  renderProjects();
+}
 function populateProjectClientFilter(){
   const sel = document.getElementById('pr-filter-client');
   const current = sel.value;
@@ -85,6 +114,7 @@ function populateProjectClientFilter(){
 }
 var activeProjectStatusTab = 'dopyt';
 function renderProjects(){
+  renderYearTileBar();
   const filtered = getFilteredProjects();
   const todayStr = toLocalISODate(new Date());
   const soonCutoff = new Date(); soonCutoff.setDate(soonCutoff.getDate()+14);
