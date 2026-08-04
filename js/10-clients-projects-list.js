@@ -77,15 +77,26 @@ function setQuickFilter(tag, year, btnEl){
   if(btnEl) btnEl.classList.add('active');
   renderProjects();
 }
-/* ---- Veľký prehľadný filter podľa roka (dynamicky podľa toho, čo je v dátach) ---- */
+/* ---- Veľký prehľadný filter podľa roka (dynamicky podľa toho, čo je v dátach,
+   a naviac vždy zopár rokov dopredu, aby sa dalo plánovať skôr, než v nich vznikne prvá zákazka) ---- */
+function getYearTileMaxYear(){
+  const curYear = new Date().getFullYear();
+  const stored = Number(localStorage.getItem('slate:yearTileMaxYear'));
+  return stored && stored > curYear ? stored : curYear + 3;
+}
+function extendYearTiles(){
+  const newMax = getYearTileMaxYear() + 1;
+  localStorage.setItem('slate:yearTileMaxYear', String(newMax));
+  renderYearTileBar();
+}
 function renderYearTileBar(){
   const el = document.getElementById('yearTileBar');
   if(!el) return;
   const years = new Set();
   DATA.projects.forEach(p=>{ if(p.deadline) years.add(p.deadline.slice(0,4)); });
   const curYear = new Date().getFullYear();
-  years.add(String(curYear));
-  years.add(String(curYear+1));
+  const maxYear = getYearTileMaxYear();
+  for(let y=curYear; y<=maxYear; y++) years.add(String(y));
   const sortedYears = Array.from(years).sort();
   const countFor = y => DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(y)).length;
   const allActive = !projectFilters.year;
@@ -99,6 +110,10 @@ function renderYearTileBar(){
       <div class="year-tile-num">${y}</div>
       <div class="year-tile-count">${countFor(y)} zákaziek</div>
     </div>`).join('')}
+    <div class="year-tile year-tile-add" onclick="extendYearTiles()" title="Pridať ďalší rok dopredu">
+      <div class="year-tile-num">+</div>
+      <div class="year-tile-count">Ďalší rok</div>
+    </div>
   `;
 }
 function setYearFilter(year){

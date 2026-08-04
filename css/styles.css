@@ -285,6 +285,9 @@
   .year-tile-num{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:.5px;color:var(--text);line-height:1;}
   .year-tile.active .year-tile-num{color:var(--accent);}
   .year-tile-count{font-size:12px;color:var(--text-dim);margin-top:6px;}
+  .year-tile-add{flex:0 0 auto;min-width:70px;max-width:80px;border-style:dashed;opacity:.6;}
+  .year-tile-add:hover{opacity:1;}
+  .year-tile-add .year-tile-num{font-size:24px;color:var(--text-dim);}
   @media (max-width:600px){
     .year-tile{min-width:82px;padding:12px 6px;}
     .year-tile-num{font-size:24px;}
