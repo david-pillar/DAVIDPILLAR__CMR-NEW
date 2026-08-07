@@ -299,6 +299,7 @@
         <div><h1 class="page-title">Zákazky</h1><div class="page-sub">Stav produkcie jednotlivých projektov</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn ghost" onclick="exportProjectsCsv()">📊 Export pre Excel</button>
+          <button class="btn ghost" onclick="openScreenshotImportModal()">📷 Dopyt zo screenshotu</button>
           <button class="btn ghost" onclick="openGoogleFormModal()">📋 Google formulár</button>
           <button class="btn ghost" onclick="openImportModal()">⬆ Importovať z Pripomienok</button>
           <button class="btn" onclick="openProjectModal()">+ Nová zákazka</button>
@@ -1201,6 +1202,33 @@
     <div class="modal-foot">
       <span class="row-sub" id="gform-preview-count"></span>
       <button class="btn" id="gform-import-btn" style="display:none;" onclick="importSelectedGoogleFormRows()">Importovať vybrané ako nové zákazky</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Screenshot import (OCR, beží len v prehliadači, nič sa nikam neposiela) -->
+<div class="modal-overlay" id="modal-screenshot-import">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-head"><h3>📷 Dopyt zo screenshotu</h3><button class="modal-close" onclick="closeModal('modal-screenshot-import')">×</button></div>
+    <div class="modal-body">
+      <p class="row-sub" style="margin:0 0 8px;">Appka sa pokúsi rozpoznať text priamo v prehliadači (napr. z Instagram DM, SMS alebo mailu) a vytiahnuť meno, telefón, email a dátum. Rozpoznávanie nie je dokonalé — polia pred uložením skontroluj a doplň.</p>
+      <div><label>Vyber screenshot</label><input type="file" accept="image/*" id="ssi-file" onchange="onScreenshotFileChosen(this)"></div>
+      <img id="ssi-preview-img" style="display:none;max-width:100%;max-height:200px;border-radius:8px;margin-top:10px;border:1px solid var(--border);">
+      <p class="row-sub" id="ssi-status" style="margin:10px 0 0;"></p>
+      <div id="ssi-fields" style="display:none;margin-top:6px;">
+        <div class="field-row">
+          <div><label>Meno</label><input id="ssi-guess-name" placeholder="Meno klienta"></div>
+          <div><label>Dátum akcie</label><input type="date" id="ssi-guess-date"></div>
+        </div>
+        <div class="field-row">
+          <div><label>Telefón</label><input id="ssi-guess-phone" placeholder="+421..."></div>
+          <div><label>Email</label><input id="ssi-guess-email" placeholder="email@..."></div>
+        </div>
+        <div><label>Rozpoznaný text (uloží sa ako poznámka k dopytu)</label><textarea id="ssi-raw-text" style="min-height:120px;font-size:12.5px;"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="ssi-create-btn" style="display:none;" onclick="createDopytFromScreenshot()">+ Vytvoriť dopyt</button>
     </div>
   </div>
 </div>

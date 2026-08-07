@@ -237,4 +237,133 @@ async function runImportProjects(){
   showToast(`Naimportovaných ${lines.length} zákaziek (${withDate}× s rozpoznaným termínom)`);
 }
 
+/* ===================== Dopyt zo screenshotu (OCR v prehliadači) =====================
+   Rozpoznávanie textu beží celé lokálne cez Tesseract.js (knižnica sa dotiahne až keď je
+   naozaj treba, nič sa nikam neposiela). Z rozpoznaného textu appka odhadne meno, telefón,
+   email a dátum, ale vždy ich dá skontrolovať pred vytvorením dopytu — OCR nie je dokonalé. */
+var tesseractLoadPromise = null;
+function ensureTesseractLoaded(){
+  if(typeof Tesseract !== 'undefined') return Promise.resolve();
+  if(tesseractLoadPromise) return tesseractLoadPromise;
+  tesseractLoadPromise = new Promise((resolve, reject)=>{
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload = ()=>resolve();
+    script.onerror = ()=>{ tesseractLoadPromise = null; reject(new Error('load failed')); };
+    document.head.appendChild(script);
+  });
+  return tesseractLoadPromise;
+}
+function openScreenshotImportModal(){
+  document.getElementById('ssi-file').value = '';
+  const img = document.getElementById('ssi-preview-img');
+  img.style.display = 'none'; img.src = '';
+  document.getElementById('ssi-status').textContent = '';
+  document.getElementById('ssi-fields').style.display = 'none';
+  document.getElementById('ssi-create-btn').style.display = 'none';
+  document.getElementById('ssi-raw-text').value = '';
+  ['ssi-guess-name','ssi-guess-phone','ssi-guess-email','ssi-guess-date'].forEach(id=>document.getElementById(id).value='');
+  openModal('modal-screenshot-import');
+}
+function onScreenshotFileChosen(input){
+  const file = input.files[0];
+  if(!file) return;
+  const img = document.getElementById('ssi-preview-img');
+  img.src = URL.createObjectURL(file);
+  img.style.display = 'block';
+  runScreenshotOCR(file);
+}
+async function runScreenshotOCR(file){
+  const statusEl = document.getElementById('ssi-status');
+  const fieldsEl = document.getElementById('ssi-fields');
+  const createBtn = document.getElementById('ssi-create-btn');
+  fieldsEl.style.display = 'none';
+  createBtn.style.display = 'none';
+  statusEl.textContent = '⏳ Načítavam rozpoznávanie textu...';
+  try{
+    await ensureTesseractLoaded();
+  }catch(e){
+    statusEl.textContent = 'Nepodarilo sa načítať rozpoznávanie textu — over internetové pripojenie a skús znova.';
+    return;
+  }
+  try{
+    statusEl.textContent = '🔎 Rozpoznávam text...';
+    const { data } = await Tesseract.recognize(file, 'slk+eng', {
+      logger: m=>{
+        if(m.status==='recognizing text' && typeof m.progress==='number'){
+          statusEl.textContent = `🔎 Rozpoznávam text... ${Math.round(m.progress*100)}%`;
+        }
+      }
+    });
+    const text = (data && data.text) || '';
+    document.getElementById('ssi-raw-text').value = text.trim();
+    const guess = guessFieldsFromOcrText(text);
+    document.getElementById('ssi-guess-name').value = guess.name;
+    document.getElementById('ssi-guess-phone').value = guess.phone;
+    document.getElementById('ssi-guess-email').value = guess.email;
+    document.getElementById('ssi-guess-date').value = guess.date;
+    fieldsEl.style.display = 'block';
+    createBtn.style.display = 'inline-flex';
+    statusEl.textContent = text.trim()
+      ? '✓ Text rozpoznaný — skontroluj a doplň polia nižšie.'
+      : '⚠️ Nepodarilo sa rozpoznať žiadny text — skús ostrejší screenshot, alebo vyplň polia ručne.';
+  }catch(e){
+    statusEl.textContent = 'Rozpoznávanie zlyhalo — skús to znova, alebo vyplň údaje ručne nižšie.';
+    fieldsEl.style.display = 'block';
+    createBtn.style.display = 'inline-flex';
+  }
+}
+function guessFieldsFromOcrText(text){
+  const phoneMatch = text.match(/(?:\+421|00421|0)[\s.\-]?9\d{2}[\s.\-]?\d{3}[\s.\-]?\d{3}/);
+  const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  const dateMatch = text.match(/\b\d{1,2}\.\s?\d{1,2}\.\s?\d{2,4}/) || text.match(/\b\d{4}-\d{2}-\d{2}/) || text.match(/\b\d{1,2}\/\d{1,2}\/\d{4}/);
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  // Najpravdepodobnejšie meno: prvý riadok s dvoma slovami začínajúcimi veľkým písmenom,
+  // ktorý zjavne nie je telefón/email (hrubý odhad, nie spoľahlivá detekcia).
+  const nameGuess = lines.find(l=>
+    /^[A-ZÁČĎÉÍĹĽŇÓŔŠŤÚÝŽ][a-zá-žA-ZÁ-Ž]+\s+[A-ZÁČĎÉÍĹĽŇÓŔŠŤÚÝŽ][a-zá-žA-ZÁ-Ž]+/.test(l)
+    && !l.includes('@') && !/\d{3}/.test(l)
+  ) || '';
+  return {
+    name: nameGuess,
+    phone: phoneMatch ? phoneMatch[0].replace(/[\s.\-]/g,'') : '',
+    email: emailMatch ? emailMatch[0] : '',
+    date: dateMatch ? parseFlexibleDate(dateMatch[0]) : ''
+  };
+}
+async function createDopytFromScreenshot(){
+  const name = document.getElementById('ssi-guess-name').value.trim();
+  const phone = document.getElementById('ssi-guess-phone').value.trim();
+  const email = document.getElementById('ssi-guess-email').value.trim();
+  const date = document.getElementById('ssi-guess-date').value;
+  const rawText = document.getElementById('ssi-raw-text').value.trim();
+
+  let clientId = '';
+  if(name){
+    const existing = DATA.clients.find(c=>c.name.toLowerCase()===name.toLowerCase());
+    if(existing){
+      clientId = existing.id;
+      existing.phone = phone || existing.phone;
+      existing.email = email || existing.email;
+    }else{
+      clientId = uid();
+      DATA.clients.push({ id: clientId, name, phone, email, notes:'' });
+    }
+    await saveKey('clients', DATA.clients);
+  }
+  DATA.projects.push({
+    id: uid(),
+    title: name ? `Dopyt — ${name}` : 'Dopyt zo screenshotu',
+    clientId,
+    deadline: date || '',
+    budget: '',
+    status: 'dopyt',
+    notes: ['Vytvorené zo screenshotu (OCR):', rawText].filter(Boolean).join('\n\n')
+  });
+  await saveKey('projects', DATA.projects);
+  closeModal('modal-screenshot-import');
+  renderAll();
+  showToast('Dopyt vytvorený zo screenshotu ✓ — skontroluj si ho v Zákazkách');
+}
+
 /* --- Invoice modal --- */
