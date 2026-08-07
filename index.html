@@ -282,6 +282,10 @@
         <div><h1 class="page-title">Klienti</h1><div class="page-sub">Databáza kontaktov a história spolupráce</div></div>
         <button class="btn" onclick="openClientModal()">+ Nový klient</button>
       </div>
+      <div class="panel" id="topClientsPanel" style="margin-bottom:16px;display:none;">
+        <h3 style="margin-bottom:12px;">🏆 Top klienti podľa obratu</h3>
+        <div id="topClientsList"></div>
+      </div>
       <div class="search-bar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         <input id="clientSearch" placeholder="Hľadať klienta..." oninput="renderClients()">
@@ -354,6 +358,10 @@
         <div class="stat-card"><div class="stat-num" id="invPaidTotal">0 €</div><div class="stat-label">Uhradené</div></div>
         <div class="stat-card"><div class="stat-num" id="invCountTotal">0</div><div class="stat-label">Počet faktúr</div></div>
         <div class="stat-card" id="invOverdueCard"><div class="stat-num" id="invOverdueCount" style="color:#e05656;">0</div><div class="stat-label">Po splatnosti</div></div>
+      </div>
+      <div class="panel" style="margin-bottom:16px;">
+        <h3 style="margin-bottom:12px;">📈 Očakávaný príjem</h3>
+        <div id="cashflowForecast"></div>
       </div>
       <div class="panel">
         <div id="invoiceBulkBar" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;padding:10px 14px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:8px;">
@@ -965,7 +973,7 @@
               <div style="margin-top:8px;font-weight:700;">Spolu na tejto zákazke: <span id="pr-time-total" class="num" style="color:var(--accent);">0 h</span></div>
             </div>
             <div><label>Poznámka</label><textarea id="pr-notes"></textarea></div>
-            <div><label>Tagy (oddelené čiarkou)</label><input id="pr-tags" placeholder="napr. 2-kamery, kradnutie"></div>
+            <div><label>Tagy (oddelené čiarkou)</label><input id="pr-tags" placeholder="napr. 2-kamery, kradnutie" oninput="renderTagSuggestions('pr-tags','pr-tags-suggestions')"><div class="tag-suggestions" id="pr-tags-suggestions"></div></div>
           </div>
         </div>
       </div>
@@ -1073,7 +1081,7 @@
         <div><label>Čas</label><input type="time" id="bk-time"></div>
       </div>
       <div><label>Miesto</label><input id="bk-location" placeholder="napr. Bratislava, hotel Sheraton"></div>
-      <div><label>Tagy (oddelené čiarkou)</label><input id="bk-tags" placeholder="napr. svadba, dron, exteriér"></div>
+      <div><label>Tagy (oddelené čiarkou)</label><input id="bk-tags" placeholder="napr. svadba, dron, exteriér" oninput="renderTagSuggestions('bk-tags','bk-tags-suggestions')"><div class="tag-suggestions" id="bk-tags-suggestions"></div></div>
       <div><label>Stav</label>
         <select id="bk-status">
           <option value="dopyt">Dopyt</option>

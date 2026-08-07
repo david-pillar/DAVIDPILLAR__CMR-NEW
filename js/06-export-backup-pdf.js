@@ -65,6 +65,21 @@ function renderDataHealthCheck(){
     items: vendorsNoPhone.map(v=>({ title:v.name, onClick:`openVendorModal('${v.id}')` }))
   });
 
+  const todayStr = toLocalISODate(new Date());
+  const stuckProjects = DATA.projects.filter(p=>
+    !p.archived && p.deadline && p.deadline<todayStr && p.status!=='zaplatene'
+  );
+  if(stuckProjects.length) groups.push({
+    label: `⏰ ${stuckProjects.length} zákazka/y po termíne, no stále neuzavreté`,
+    items: stuckProjects.map(p=>({ title:`${p.title||'bez názvu'} — ${STATUS_LABELS[p.status]||p.status}`, onClick:`openProjectModal('${p.id}')` }))
+  });
+
+  const bookingsNoClient = DATA.bookings.filter(b=>!b.archived && !b.clientId);
+  if(bookingsNoClient.length) groups.push({
+    label: `👤 ${bookingsNoClient.length} rezervácia/e bez priradeného klienta`,
+    items: bookingsNoClient.map(b=>({ title:b.title||'bez názvu', onClick:`openBookingModal('${b.id}')` }))
+  });
+
   if(!groups.length){
     el.innerHTML = '<div class="empty">✓ Všetko v poriadku — žiadne chýbajúce údaje.</div>';
     return;

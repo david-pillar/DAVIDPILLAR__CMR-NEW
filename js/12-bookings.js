@@ -29,13 +29,14 @@ function openBookingModal(id, prefillDate){
     document.getElementById('bk-status').value = 'dopyt';
     document.getElementById('bk-notes').value = '';
   }
+  renderTagSuggestions('bk-tags','bk-tags-suggestions');
   openModal('modal-booking');
 }
 async function saveBooking(){
   const id = document.getElementById('bk-id').value || uid();
   const title = document.getElementById('bk-title').value.trim();
   if(!title){ showToast('Zadaj názov rezervácie'); return; }
-  const tags = document.getElementById('bk-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const tags = document.getElementById('bk-tags').value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
   const date = document.getElementById('bk-date').value;
 
   const conflicting = DATA.bookings.filter(b=>b.id!==id && b.date===date && !b.archived);

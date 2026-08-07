@@ -114,6 +114,7 @@ function openProjectModal(id){
     renderProjectStatusIndicators(null);
   }
   updateMessagePreview();
+  renderTagSuggestions('pr-tags','pr-tags-suggestions');
   showProjectFormView();
 }
 function showProjectFormView(){
@@ -138,7 +139,7 @@ async function saveProject(){
   const id = document.getElementById('pr-id').value || uid();
   const title = document.getElementById('pr-title').value.trim();
   if(!title){ showToast('Zadaj názov zákazky'); return; }
-  const tags = document.getElementById('pr-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const tags = document.getElementById('pr-tags').value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
   const type = document.getElementById('pr-type').value;
 
   const clientMode = document.getElementById('pr-client-mode').value;

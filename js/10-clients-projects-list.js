@@ -2,7 +2,24 @@
    Zoznamy klientov, zákaziek (kanban) a faktúr (vrátane hromadných akcií).
    ===================================================== */
 
+function renderTopClients(){
+  const panel = document.getElementById('topClientsPanel');
+  const el = document.getElementById('topClientsList');
+  if(!panel || !el) return;
+  const ranked = DATA.clients.map(c=>{
+    const paid = DATA.invoices.filter(i=>i.clientId===c.id && i.status==='uhradena').reduce((s,i)=>s+Number(i.amount||0),0);
+    return { client:c, paid };
+  }).filter(r=>r.paid>0).sort((a,b)=>b.paid-a.paid).slice(0,5);
+  if(!ranked.length){ panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  el.innerHTML = ranked.map((r,i)=>`
+    <div class="list-row" onclick="openClientModal('${r.client.id}')">
+      <div class="row-main"><div class="row-title">#${i+1} ${escapeHtml(r.client.name||'Bez mena')}</div><div class="row-sub">${escapeHtml(r.client.phone||r.client.email||'')}</div></div>
+      <span class="row-tag" style="font-size:13px;color:var(--accent);font-weight:700;">${fmtMoney(r.paid)}</span>
+    </div>`).join('');
+}
 function renderClients(){
+  renderTopClients();
   const q = (document.getElementById('clientSearch').value||'').toLowerCase();
   const list = DATA.clients.filter(c=>!q || (c.name||'').toLowerCase().includes(q) || (c.email||'').toLowerCase().includes(q));
   const el = document.getElementById('clientsList');
@@ -197,8 +214,49 @@ function selectProjectStatusTab(status){
   renderProjects();
 }
 
+/* ---- Očakávaný príjem (cashflow) — koľko má prísť z neuhradených faktúr, po mesiacoch splatnosti ---- */
+function renderCashflowForecast(){
+  const el = document.getElementById('cashflowForecast');
+  if(!el) return;
+  const todayStr = toLocalISODate(new Date());
+  const unpaid = DATA.invoices.filter(i=>!i.archived && i.status==='neuhradena' && i.due);
+
+  const overdueTotal = unpaid.filter(i=>i.due<todayStr).reduce((s,i)=>s+Number(i.amount||0),0);
+
+  const MONTHS_AHEAD = 4;
+  const monthKeys = [], monthLabels = [];
+  const cursor = new Date(); cursor.setDate(1);
+  for(let i=0;i<MONTHS_AHEAD;i++){
+    monthKeys.push(`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`);
+    const label = cursor.toLocaleDateString('sk-SK',{month:'long', year:'numeric'});
+    monthLabels.push(label.charAt(0).toUpperCase()+label.slice(1));
+    cursor.setMonth(cursor.getMonth()+1);
+  }
+  const monthTotals = monthKeys.map(key=> unpaid.filter(i=>i.due>=todayStr && i.due.startsWith(key)).reduce((s,i)=>s+Number(i.amount||0),0));
+
+  const rows = [];
+  if(overdueTotal>0) rows.push({ label:'⚠️ Po splatnosti', value:overdueTotal, danger:true });
+  monthKeys.forEach((key,i)=> rows.push({ label: monthLabels[i], value: monthTotals[i], danger:false }));
+
+  if(!rows.some(r=>r.value>0)){
+    el.innerHTML = '<div class="empty">Žiadne neuhradené faktúry so splatnosťou v dohľadnej dobe.</div>';
+    return;
+  }
+  const maxVal = Math.max(...rows.map(r=>r.value), 1);
+  el.innerHTML = rows.map(r=>`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+        <span style="${r.danger?'color:#e05656;font-weight:600;':''}">${r.label}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;${r.danger?'color:#e05656;':'color:var(--text);'}">${fmtMoney(r.value)}</span>
+      </div>
+      <div style="height:8px;background:var(--surface-3);border-radius:20px;overflow:hidden;">
+        <div style="height:100%;width:${Math.round(r.value/maxVal*100)}%;background:${r.danger?'#e05656':'linear-gradient(90deg, var(--accent), var(--accent-hover))'};border-radius:20px;"></div>
+      </div>
+    </div>`).join('');
+}
 /* ===================== RENDER: INVOICES ===================== */
 function renderInvoices(){
+  renderCashflowForecast();
   const todayStr = toLocalISODate(new Date());
   const visibleInvoices = DATA.invoices.filter(i=>!i.archived);
   const unpaid = visibleInvoices.filter(i=>i.status==='neuhradena').reduce((s,i)=>s+Number(i.amount||0),0);

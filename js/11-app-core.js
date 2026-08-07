@@ -67,7 +67,7 @@ function updateNavBadges(){
   }
 }
 
-/* ---- Global search (clients + projects) ---- */
+/* ---- Global search (klienti, zákazky, faktúry, rezervácie) ---- */
 function onGlobalSearchInput(){
   const q = document.getElementById('global-search').value.trim().toLowerCase();
   const resultsEl = document.getElementById('global-search-results');
@@ -75,8 +75,10 @@ function onGlobalSearchInput(){
 
   const matchedClients = DATA.clients.filter(c=>(c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q)).slice(0,5);
   const matchedProjects = DATA.projects.filter(p=>(p.title||'').toLowerCase().includes(q)).slice(0,5);
+  const matchedInvoices = DATA.invoices.filter(i=>(i.number||'').toLowerCase().includes(q)).slice(0,5);
+  const matchedBookings = DATA.bookings.filter(b=>(b.title||'').toLowerCase().includes(q)).slice(0,5);
 
-  if(!matchedClients.length && !matchedProjects.length){
+  if(!matchedClients.length && !matchedProjects.length && !matchedInvoices.length && !matchedBookings.length){
     resultsEl.innerHTML = '<div class="empty" style="padding:10px;">Nič sa nenašlo.</div>';
     resultsEl.style.display = 'block';
     return;
@@ -93,7 +95,25 @@ function onGlobalSearchInput(){
     html += matchedProjects.map(p=>{
       const client = DATA.clients.find(c=>c.id===p.clientId);
       return `<div class="list-row" style="padding:8px 10px;" onclick="goToSearchResult('project','${p.id}')">
-        <div class="row-main"><div class="row-title">${escapeHtml(p.title||'Bez názvu')}</div><div class="row-sub">${client?escapeHtml(client.name):''}${p.deadline?' · '+fmtDate(p.deadline):''}</div></div>
+        <div class="row-main"><div class="row-title">${escapeHtml(p.title||'Bez názvu')}${p.archived?' 🗄️':''}</div><div class="row-sub">${client?escapeHtml(client.name):''}${p.deadline?' · '+fmtDate(p.deadline):''}</div></div>
+      </div>`;
+    }).join('');
+  }
+  if(matchedInvoices.length){
+    html += `<div style="padding:6px 10px 2px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;">Faktúry</div>`;
+    html += matchedInvoices.map(i=>{
+      const client = DATA.clients.find(c=>c.id===i.clientId);
+      return `<div class="list-row" style="padding:8px 10px;" onclick="goToSearchResult('invoice','${i.id}')">
+        <div class="row-main"><div class="row-title">${escapeHtml(i.number||'bez čísla')}${i.archived?' 🗄️':''}</div><div class="row-sub">${client?escapeHtml(client.name):''}${i.amount?' · '+fmtMoney(i.amount):''}</div></div>
+      </div>`;
+    }).join('');
+  }
+  if(matchedBookings.length){
+    html += `<div style="padding:6px 10px 2px;font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;">Rezervácie</div>`;
+    html += matchedBookings.map(b=>{
+      const client = DATA.clients.find(c=>c.id===b.clientId);
+      return `<div class="list-row" style="padding:8px 10px;" onclick="goToSearchResult('booking','${b.id}')">
+        <div class="row-main"><div class="row-title">${escapeHtml(b.title||'Bez názvu')}${b.archived?' 🗄️':''}</div><div class="row-sub">${client?escapeHtml(client.name):''}${b.date?' · '+fmtDate(b.date):''}</div></div>
       </div>`;
     }).join('');
   }
@@ -110,6 +130,10 @@ function goToSearchResult(kind, id){
     document.getElementById('view-clients').classList.add('active');
     currentView = 'clients';
     openClientModal(id);
+  }else if(kind==='invoice'){
+    openInvoiceModal(id);
+  }else if(kind==='booking'){
+    openBookingModal(id);
   }else{
     openProjectModal(id);
   }
@@ -131,6 +155,31 @@ function populateClientSelects(){
 
 function escapeHtml(str){
   return String(str||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ---- Tag suggestions: chytrejšie tagovanie bez preklepov (napr. "svadba" vs "Svadba") ----
+   Tagy sa ukladajú vždy malými písmenami (viď saveProject/saveBooking), a pod poľom sa ukáže
+   klikacia ponuka už použitých tagov naprieč zákazkami aj rezerváciami. */
+function getAllUsedTags(){
+  const set = new Set();
+  DATA.projects.forEach(p=>(p.tags||[]).forEach(t=>{ if(t) set.add(String(t).toLowerCase()); }));
+  DATA.bookings.forEach(b=>(b.tags||[]).forEach(t=>{ if(t) set.add(String(t).toLowerCase()); }));
+  return Array.from(set).sort();
+}
+function renderTagSuggestions(inputId, suggestElId){
+  const input = document.getElementById(inputId);
+  const suggestEl = document.getElementById(suggestElId);
+  if(!input || !suggestEl) return;
+  const current = input.value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+  const remaining = getAllUsedTags().filter(t=>!current.includes(t));
+  suggestEl.innerHTML = remaining.length ? remaining.map(t=>`<span class="tag-suggestion-chip" onclick="addTagSuggestion('${inputId}','${suggestElId}','${t}')">+ ${escapeHtml(t)}</span>`).join('') : '';
+}
+function addTagSuggestion(inputId, suggestElId, tag){
+  const input = document.getElementById(inputId);
+  const current = input.value.split(',').map(t=>t.trim()).filter(Boolean);
+  if(!current.map(t=>t.toLowerCase()).includes(tag)) current.push(tag);
+  input.value = current.join(', ');
+  renderTagSuggestions(inputId, suggestElId);
 }
 
 /* ===================== MODALS ===================== */

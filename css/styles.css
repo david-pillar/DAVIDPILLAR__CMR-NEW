@@ -479,6 +479,12 @@
     display:inline-block;padding:2px 8px;border-radius:5px;font-size:10.5px;font-weight:600;
     letter-spacing:.2px;background:var(--surface-3);color:var(--text-dim);border:1px solid var(--border);
   }
+  .tag-suggestions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;}
+  .tag-suggestion-chip{
+    font-size:11px;padding:3px 10px;border-radius:20px;background:transparent;color:var(--text-dim);
+    cursor:pointer;border:1px dashed var(--border);transition:all .15s var(--ease);user-select:none;
+  }
+  .tag-suggestion-chip:hover{background:var(--accent-dim);color:var(--accent);border-color:var(--accent);}
   .pricing-row{display:flex;gap:8px;align-items:center;}
   .pricing-row input[type="text"], .pricing-row input:not([type]){flex:1;}
   .pricing-row input[type="number"]{width:110px;flex:none;}

@@ -19,9 +19,33 @@ function openClientModal(id){
     document.getElementById('cl-whatsapp-btn').style.display = c.phone ? 'inline-flex' : 'none';
     const bks = DATA.bookings.filter(b=>b.clientId===id);
     const prs = DATA.projects.filter(p=>p.clientId===id);
+    const invs = DATA.invoices.filter(i=>i.clientId===id);
+    const totalPaid = invs.filter(i=>i.status==='uhradena').reduce((s,i)=>s+Number(i.amount||0),0);
+    const totalUnpaid = invs.filter(i=>i.status==='neuhradena').reduce((s,i)=>s+Number(i.amount||0),0);
     let h = '';
-    prs.forEach(p=>h+=`<div class="row-sub" style="padding:3px 0;">Zákazka: ${escapeHtml(p.title)} — <span class="pill status-${p.status}" style="padding:1px 7px;">${STATUS_LABELS[p.status]}</span></div>`);
-    bks.forEach(b=>h+=`<div class="row-sub" style="padding:3px 0;">Rezervácia: ${escapeHtml(b.title)} — ${fmtDate(b.date)}</div>`);
+    if(invs.length){
+      h += `<div style="padding:2px 0 12px;font-weight:700;font-size:14px;color:var(--text);">💰 Uhradené spolu: ${fmtMoney(totalPaid)}${totalUnpaid?` <span style="color:var(--text-dim);font-weight:500;font-size:12px;">· neuhradené ${fmtMoney(totalUnpaid)}</span>`:''}</div>`;
+    }
+    if(prs.length){
+      h += `<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin:6px 0 2px;">Zákazky</div>`;
+      h += prs.map(p=>`<div class="list-row" style="padding:7px 2px;" onclick="openProjectFromClientHistory('${p.id}')">
+        <div class="row-main"><div class="row-title" style="font-size:13px;">${escapeHtml(p.title||'Bez názvu')}${p.archived?' 🗄️':''}</div><div class="row-sub">${p.deadline?fmtDate(p.deadline):'bez termínu'}</div></div>
+        <span class="pill status-${p.status}" style="padding:1px 7px;">${STATUS_LABELS[p.status]}</span>
+      </div>`).join('');
+    }
+    if(bks.length){
+      h += `<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 2px;">Rezervácie</div>`;
+      h += bks.map(b=>`<div class="list-row" style="padding:7px 2px;" onclick="openBookingFromClientHistory('${b.id}')">
+        <div class="row-main"><div class="row-title" style="font-size:13px;">${escapeHtml(b.title||'Bez názvu')}${b.archived?' 🗄️':''}</div><div class="row-sub">${fmtDate(b.date)} ${b.time||''}</div></div>
+      </div>`).join('');
+    }
+    if(invs.length){
+      h += `<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 2px;">Faktúry</div>`;
+      h += invs.map(i=>`<div class="list-row" style="padding:7px 2px;" onclick="openInvoiceFromClientHistory('${i.id}')">
+        <div class="row-main"><div class="row-title" style="font-size:13px;">${escapeHtml(i.number||'bez čísla')}${i.archived?' 🗄️':''}</div><div class="row-sub">${i.due?fmtDate(i.due):''}</div></div>
+        <span class="pill inv-${i.status}" style="padding:1px 7px;">${fmtMoney(i.amount)} · ${i.status==='uhradena'?'Uhradená':'Neuhradená'}</span>
+      </div>`).join('');
+    }
     historyEl.innerHTML = h || '<div class="empty" style="padding:6px 0;">Zatiaľ žiadna história.</div>';
   }else{
     document.getElementById('cl-id').value = '';
@@ -36,6 +60,9 @@ function openClientModal(id){
   }
   openModal('modal-client');
 }
+function openProjectFromClientHistory(id){ closeModal('modal-client'); openProjectModal(id); }
+function openBookingFromClientHistory(id){ closeModal('modal-client'); openBookingModal(id); }
+function openInvoiceFromClientHistory(id){ closeModal('modal-client'); openInvoiceModal(id); }
 function openWhatsappFromModal(){
   openWhatsapp(document.getElementById('cl-phone').value);
 }
