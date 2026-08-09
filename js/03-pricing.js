@@ -231,37 +231,56 @@ async function savePricingBase(){
 }
 
 /* ---- Dependency-free CSS bar chart helpers (no Chart.js — funguje vždy, aj keď
-   sa externá knižnica na grafy nenačíta kvôli pomalému/blokovanému pripojeniu). ---- */
-function renderMiniBarChart(containerId, labels, values, fmtFn, onClickFn){
+   sa externá knižnica na grafy nenačíta kvôli pomalému/blokovanému pripojeniu).
+   Stĺpce/pruhy sa vykreslia najprv na 0 a hneď nato (cez dvojitý requestAnimationFrame,
+   aby prehliadač stihol prvý stav vykresliť) narastú na cieľovú hodnotu — vďaka CSS
+   transition to pôsobí ako plynulá animácia bez akejkoľvek externej knižnice. ---- */
+function animateFillIn(el, selector, prop, unit){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    el.querySelectorAll(selector).forEach(node=>{ node.style[prop] = node.dataset.pct + (unit||'%'); });
+  }));
+}
+function renderMiniBarChart(containerId, labels, values, opts){
+  opts = opts || {};
   const el = document.getElementById(containerId);
   if(!el) return;
   if(!labels.length){ el.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>'; return; }
   const maxVal = Math.max(...values, 1);
-  const fmt = fmtFn || (v=>String(v));
+  const fmt = opts.fmt || (v=>String(v));
   el.innerHTML = labels.map((label,i)=>{
     const v = values[i]||0;
     const pct = Math.max(Math.round(v/maxVal*100), v>0?4:0);
-    const clickable = typeof onClickFn === 'function';
-    return `<div class="mini-bar-col${clickable?' mini-bar-col-clickable':''}" ${clickable?`onclick="(${onClickFn.name})('${label}')" title="Klikni pre detail"`:''}>
+    const clickable = typeof opts.onClick === 'function';
+    const extraClass = typeof opts.colClass === 'function' ? (opts.colClass(label,v,i)||'') : '';
+    return `<div class="mini-bar-col${clickable?' mini-bar-col-clickable':''}${extraClass?' '+extraClass:''}" ${clickable?`onclick="(${opts.onClick.name})('${label}')" title="Klikni pre detail"`:''}>
       <div class="mini-bar-value">${fmt(v)}</div>
-      <div class="mini-bar-track"><div class="mini-bar" style="height:${pct}%;"></div></div>
+      <div class="mini-bar-track"><div class="mini-bar" data-pct="${pct}" style="height:0%;"></div></div>
       <div class="mini-bar-label">${escapeHtml(String(label))}</div>
     </div>`;
   }).join('');
+  animateFillIn(el, '.mini-bar', 'height');
 }
-function renderHBarList(containerId, items, colorFn){
+function renderHBarList(containerId, items, opts){
+  opts = opts || {};
   const el = document.getElementById(containerId);
   if(!el) return;
   if(!items.length){ el.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>'; return; }
   const maxVal = Math.max(...items.map(it=>it.value), 1);
   el.innerHTML = items.map((it,i)=>{
     const pct = Math.max(Math.round(it.value/maxVal*100), it.value>0?2:0);
-    const color = colorFn ? colorFn(it,i) : null;
+    const color = typeof opts.color === 'function' ? opts.color(it,i) : null;
     return `<div>
       <div class="hbar-row-head"><span>${escapeHtml(it.label)}</span><span class="hbar-value">${fmtMoney(it.value)}</span></div>
-      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;${color?`background:${color};`:''}"></div></div>
+      <div class="hbar-track"><div class="hbar-fill" data-pct="${pct}" style="width:0%;${color?`background:${color};`:''}"></div></div>
     </div>`;
   }).join('');
+  animateFillIn(el, '.hbar-fill', 'width');
+}
+/* ---- Rýchla navigácia medzi panelmi na Cenotvorbe ---- */
+function scrollToPricingPanel(e, panelId){
+  if(e) e.preventDefault();
+  const target = document.getElementById(panelId);
+  if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
 function median(arr){
@@ -306,7 +325,7 @@ function renderPricingForecast(){
           <span>🎯 Ročný cieľ: <b style="color:var(--text);">${fmtMoney(goal)}</b></span>
           <span class="row-sub" style="${onTrack?'color:var(--green-page);':'color:#f0827f;'}">${onTrack ? 'Podľa odhadu cieľ splníš 🎉' : 'Podľa doterajšieho tempa cieľ zatiaľ nesplníš'}</span>
         </div>
-        <div class="hbar-track" style="margin-bottom:6px;"><div class="hbar-fill" style="width:${pctPaid}%;"></div></div>
+        <div class="hbar-track" style="margin-bottom:6px;"><div class="hbar-fill" data-pct="${pctPaid}" style="width:0%;"></div></div>
         <div class="row-sub">Vyplatené doteraz: ${pctPaid}% cieľa · Odhad na konci roka: ${pctEstimate}% cieľa</div>
       </div>`;
   }
@@ -321,9 +340,10 @@ function renderPricingForecast(){
       <span>Prešlo ${pctYearElapsed}% roka ${year}</span>
       <span class="row-sub">Tempo podľa doterajších platieb: ${fmtMoney(runRate)}/rok</span>
     </div>
-    <div class="hbar-track"><div class="hbar-fill" style="width:${pctYearElapsed}%;"></div></div>
+    <div class="hbar-track"><div class="hbar-fill" data-pct="${pctYearElapsed}" style="width:0%;"></div></div>
     ${goalHtml}
   `;
+  animateFillIn(el, '.hbar-fill', 'width');
 }
 function renderAvgPriceBreakdown(){
   const typeEl = document.getElementById('avgPriceByType');
@@ -396,9 +416,10 @@ function renderAvgPriceBreakdown(){
         <div style="display:flex;flex-direction:column;gap:6px;">
         ${trendRows.map(r=>{
           const pct = Math.round(r.perYearGrowth*100);
-          const dirTxt = pct >= 0 ? `rastie ~${pct}%/rok` : `klesá ~${Math.abs(pct)}%/rok`;
+          const dirColor = pct >= 0 ? 'var(--green-page)' : 'var(--danger)';
+          const dirTxt = pct >= 0 ? `📈 rastie ~${pct}%/rok` : `📉 klesá ~${Math.abs(pct)}%/rok`;
           return `<div style="font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span>${escapeHtml(r.label)}: ${fmtMoney(r.firstV)} (${r.firstY}) → ${fmtMoney(r.lastV)} (${r.lastY}), ${dirTxt}</span>
+            <span>${escapeHtml(r.label)}: ${fmtMoney(r.firstV)} (${r.firstY}) → ${fmtMoney(r.lastV)} (${r.lastY}), <b style="color:${dirColor};">${dirTxt}</b></span>
             <span><b style="color:var(--accent);">Odporúčaná cena ${r.nextYear}: ${fmtMoney(r.suggested)}</b></span>
           </div>`;
         }).join('')}
@@ -435,7 +456,7 @@ function renderPricingCharts(){
   });
   const balikColors = ['#e85002','#6fa3d8','#7cb88f','#e08fa8'];
   const balikItems = Object.keys(balikMap).map(k=>({ label:'Balík '+k, value: balikMap[k] }));
-  renderHBarList('revenueBalikBars', balikItems, (it,i)=>balikColors[i % balikColors.length]);
+  renderHBarList('revenueBalikBars', balikItems, { color: (it,i)=>balikColors[i % balikColors.length] });
 
   // Revenue by type
   const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip', ine:'Iné' };
@@ -487,7 +508,12 @@ function renderYearsAndSeasonCharts(){
   const years = Object.keys(yearMap).sort();
   const yearValues = years.map(y=> yearsOverviewMode==='paid' ? yearMap[y].value : yearMap[y].count);
   const yearFmt = yearsOverviewMode==='paid' ? (v=>fmtMoney(v)) : (v=>String(v));
-  renderMiniBarChart('yearsBarChart', years, yearValues, yearFmt, goToProjectsYear);
+  const curYearStr = String(new Date().getFullYear());
+  renderMiniBarChart('yearsBarChart', years, yearValues, {
+    fmt: yearFmt,
+    onClick: goToProjectsYear,
+    colClass: (label)=> label===curYearStr ? 'mini-bar-current' : ''
+  });
 
   // Porovnanie rok/rok — "k dnešnému dňu" (rovnaký deň v roku), aby bolo porovnanie férové
   // aj v priebehu roka, nie len celoročné súčty.
@@ -522,8 +548,9 @@ function renderYearsAndSeasonCharts(){
       const diffPct = Math.round((thisYearToDate - lastYearToDate) / lastYearToDate * 100);
       const arrow = diffPct >= 0 ? '📈' : '📉';
       const sign = diffPct >= 0 ? '+' : '';
+      const diffColor = diffPct >= 0 ? 'var(--green-page)' : 'var(--danger)';
       const metric = yearsOverviewMode==='paid' ? 'vyplatených faktúr' : 'zákaziek';
-      yoyEl.innerHTML = `${arrow} K dnešnému dňu (${cutoffMD.replace('-','.')}.) máš <b style="color:var(--text);">${sign}${diffPct}%</b> ${metric} oproti rovnakému obdobiu ${lastYear} (${lastYearToDate} vtedy → ${thisYearToDate} teraz)`;
+      yoyEl.innerHTML = `${arrow} K dnešnému dňu (${cutoffMD.replace('-','.')}.) máš <b style="color:${diffColor};">${sign}${diffPct}%</b> ${metric} oproti rovnakému obdobiu ${lastYear} (${lastYearToDate} vtedy → ${thisYearToDate} teraz)`;
     }else if(thisYearToDate > 0){
       yoyEl.innerHTML = `📈 Za ${lastYear} nebolo k tomuto dátumu zaznamenané nič — tento rok už máš ${thisYearToDate}.`;
     }else{
@@ -553,26 +580,37 @@ function renderYearsAndSeasonCharts(){
     const m = Number(p.deadline.slice(5,7)) - 1;
     if(m>=0 && m<12) monthCounts[m]++;
   });
-  renderMiniBarChart('seasonBarChart', monthNames, monthCounts, v=>String(v));
 
   const insightEl = document.getElementById('seasonInsight');
-  if(insightEl){
-    const total = monthCounts.reduce((a,b)=>a+b,0);
-    if(total === 0){
-      insightEl.innerHTML = '';
-    }else{
-      const indexed = monthNames.map((name,i)=>({ name, count: monthCounts[i] }));
-      const sorted = indexed.slice().sort((a,b)=>b.count-a.count);
-      const topMonths = sorted.filter(m=>m.count>0).slice(0,2);
-      const weakMonths = sorted.filter(m=>m.count>0).slice(-2).reverse();
+  const total = monthCounts.reduce((a,b)=>a+b,0);
+  let topNames = [], weakNames = [];
+  if(total > 0){
+    const indexed = monthNames.map((name,i)=>({ name, count: monthCounts[i] }));
+    const sorted = indexed.slice().sort((a,b)=>b.count-a.count);
+    const topMonths = sorted.filter(m=>m.count>0).slice(0,2);
+    const weakMonths = sorted.filter(m=>m.count>0).slice(-2).reverse();
+    topNames = topMonths.map(m=>m.name);
+    const weakOverlapsTop = weakMonths.length && topMonths.length && weakMonths[0].name === topMonths[0].name;
+    weakNames = weakOverlapsTop ? [] : weakMonths.map(m=>m.name);
+    if(insightEl){
       const topTxt = topMonths.map(m=>`${m.name} (${m.count})`).join(', ');
-      const weakTxt = weakMonths.length && weakMonths[0].name !== topMonths[0]?.name
-        ? weakMonths.map(m=>`${m.name} (${m.count})`).join(', ') : '';
-      let txt = `🔥 Najsilnejšie mesiace: <b style="color:var(--text);">${topTxt}</b> — tu má zmysel zvážiť vyššie ceny alebo skorší booking.`;
-      if(weakTxt) txt += ` 🌤️ Najslabšie: <b style="color:var(--text);">${weakTxt}</b> — priestor na akcie alebo iný typ zákaziek.`;
+      const weakTxt = weakNames.length ? weakMonths.map(m=>`${m.name} (${m.count})`).join(', ') : '';
+      let txt = `🔥 Najsilnejšie mesiace: <b style="color:var(--green-page);">${topTxt}</b> — tu má zmysel zvážiť vyššie ceny alebo skorší booking.`;
+      if(weakTxt) txt += ` 🌤️ Najslabšie: <b style="color:var(--text-dim);">${weakTxt}</b> — priestor na akcie alebo iný typ zákaziek.`;
       insightEl.innerHTML = txt;
     }
+  }else if(insightEl){
+    insightEl.innerHTML = '';
   }
+
+  renderMiniBarChart('seasonBarChart', monthNames, monthCounts, {
+    fmt: v=>String(v),
+    colClass: (label)=>{
+      if(topNames.includes(label)) return 'mini-bar-top';
+      if(weakNames.includes(label)) return 'mini-bar-weak';
+      return '';
+    }
+  });
 }
 /* ---- Prekliknutie z grafu/tabuľky rokov priamo do Zákaziek, filtrovaných na daný rok ---- */
 function goToProjectsYear(year){

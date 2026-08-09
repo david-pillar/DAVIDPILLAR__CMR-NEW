@@ -466,7 +466,15 @@
         <button class="btn ghost small" style="margin-top:12px;" onclick="addPriplatokRow()">+ Pridať príplatok</button>
       </div>
 
-      <div class="panel" style="margin-top:20px;">
+      <div class="quick-nav-chips">
+        <a href="#pnl-years" onclick="scrollToPricingPanel(event,'pnl-years')">📅 Roky</a>
+        <a href="#pnl-forecast" onclick="scrollToPricingPanel(event,'pnl-forecast')">🔮 Prognóza</a>
+        <a href="#pnl-avgprice" onclick="scrollToPricingPanel(event,'pnl-avgprice')">💶 Ceny</a>
+        <a href="#pnl-season" onclick="scrollToPricingPanel(event,'pnl-season')">🌸 Sezónnosť</a>
+        <a href="#pnl-graphs" onclick="scrollToPricingPanel(event,'pnl-graphs')">📊 Grafy</a>
+      </div>
+
+      <div class="panel" style="margin-top:20px;" id="pnl-years">
         <h3>📅 Ako mi idu roky</h3>
         <div style="display:flex;gap:8px;margin:10px 0 4px;">
           <button class="btn ghost small years-view-btn active" data-mode="count" onclick="setYearsOverviewMode('count', this)">📌 Zabookované</button>
@@ -480,13 +488,13 @@
         </div>
       </div>
 
-      <div class="panel" style="margin-top:20px;">
+      <div class="panel" style="margin-top:20px;" id="pnl-forecast">
         <h3>🔮 Prognóza do konca roka</h3>
         <p class="row-sub" style="margin-bottom:12px;">Odhad na základe doterajšieho tempa príjmov a už zabookovaných zákaziek na tento rok.</p>
         <div id="pricingForecast"></div>
       </div>
 
-      <div class="panel" style="margin-top:20px;">
+      <div class="panel" style="margin-top:20px;" id="pnl-avgprice">
         <h3>💶 Priemerná cena zákazky</h3>
         <p class="row-sub" style="margin-bottom:12px;">Priemer a medián podľa typu a balíka — pomôže vidieť, či sa oplatí ceny upraviť.</p>
         <div class="cols-2">
@@ -502,14 +510,14 @@
         <div id="balikPriceTrend" style="margin-top:14px;"></div>
       </div>
 
-      <div class="panel" style="margin-top:20px;">
+      <div class="panel" style="margin-top:20px;" id="pnl-season">
         <h3>🌸 Sezónnosť — v ktorých mesiacoch prichádza najviac zákaziek</h3>
         <p class="row-sub" style="margin-bottom:12px;">Počet zákaziek podľa mesiaca v roku, spočítané naprieč všetkými rokmi — pomôže naplánovať, kedy čakať nával a kedy pokoj.</p>
         <div class="mini-barchart" id="seasonBarChart"></div>
         <p class="row-sub" style="margin-top:12px;" id="seasonInsight"></p>
       </div>
 
-      <div class="panel" style="margin-top:20px;">
+      <div class="panel" style="margin-top:20px;" id="pnl-graphs">
         <h3>📊 Grafy</h3>
         <div class="cols-2">
           <div>

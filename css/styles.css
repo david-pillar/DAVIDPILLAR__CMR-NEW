@@ -361,22 +361,41 @@
   @media (max-width:900px){.cols-2{grid-template-columns:1fr;}}
 
   /* ---- Dependency-free CSS bar charts (Cenotvorba) — no Chart.js needed ---- */
-  .mini-barchart{display:flex;align-items:flex-end;gap:10px;height:200px;padding:20px 4px 0;}
-  .mini-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+  .mini-barchart{display:flex;align-items:flex-end;gap:10px;height:200px;padding:20px 4px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .mini-bar-col{flex:1 1 40px;min-width:40px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
   .mini-bar-value{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px;white-space:nowrap;}
   .mini-bar-track{width:100%;flex:1;display:flex;align-items:flex-end;}
-  .mini-bar{width:100%;min-height:3px;border-radius:6px 6px 0 0;background:linear-gradient(180deg, var(--accent), var(--accent-hover));transition:height .3s ease;}
+  .mini-bar{width:100%;min-height:3px;border-radius:6px 6px 0 0;background:linear-gradient(180deg, var(--accent), var(--accent-hover));transition:height .5s cubic-bezier(.22,1,.36,1);}
   .mini-bar-label{font-size:11px;color:var(--text-dim);margin-top:8px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   .hbar-list{display:flex;flex-direction:column;gap:12px;}
   .hbar-row-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
   .hbar-row-head .hbar-value{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
   .hbar-track{height:10px;background:var(--surface-3);border-radius:20px;overflow:hidden;}
-  .hbar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg, var(--accent), var(--accent-hover));transition:width .3s ease;}
+  .hbar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg, var(--accent), var(--accent-hover));transition:width .5s cubic-bezier(.22,1,.36,1);}
   .mini-bar-col-clickable{cursor:pointer;border-radius:6px;transition:transform .15s ease,background .15s ease;}
   .mini-bar-col-clickable:hover{background:var(--surface-2);transform:translateY(-2px);}
   .mini-bar-col-clickable:hover .mini-bar{background:linear-gradient(180deg, var(--accent-hover), var(--accent));}
   tr.clickable-row{cursor:pointer;}
   tr.clickable-row:hover{background:var(--surface-2);}
+
+  /* Farebné zvýraznenie podľa výkonu — top mesiace/roky zelenkasté, slabé tlmené,
+     aktuálny rok zvýraznený pozadím + hrubším popiskom. */
+  .mini-bar-top .mini-bar{background:linear-gradient(180deg, #8fd0a3, var(--green-page));}
+  .mini-bar-weak .mini-bar{background:linear-gradient(180deg, var(--surface-3), var(--text-dim));opacity:.75;}
+  .mini-bar-current{background:var(--surface-2);border-radius:8px;}
+  .mini-bar-current .mini-bar-label{color:var(--accent);font-weight:700;}
+  .mini-bar-current .mini-bar-value{color:var(--accent);}
+
+  /* Rýchla navigácia medzi sekciami Cenotvorby */
+  .quick-nav-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;position:sticky;top:8px;z-index:5;}
+  .quick-nav-chips a{
+    background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:7px 14px;font-size:12.5px;
+    color:var(--text-dim);text-decoration:none;box-shadow:var(--shadow-soft);transition:all .15s ease;white-space:nowrap;
+  }
+  .quick-nav-chips a:hover{color:var(--text);border-color:var(--accent);background:var(--surface-2);}
+  @media (max-width:760px){
+    .quick-nav-chips{overflow-x:auto;flex-wrap:nowrap;position:static;padding-bottom:2px;}
+  }
 
   /* ---- Dashboard Bento Grid: dlaždice rôznej veľkosti podľa dôležitosti,
      nie rovnaký stoh panelov pod sebou. Počasie je teraz v prvom rade spolu
