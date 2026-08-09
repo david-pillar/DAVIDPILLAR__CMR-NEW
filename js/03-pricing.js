@@ -263,8 +263,91 @@ function renderHBarList(containerId, items, colorFn){
   }).join('');
 }
 
+function median(arr){
+  if(!arr.length) return 0;
+  const s = arr.slice().sort((a,b)=>a-b);
+  const mid = Math.floor(s.length/2);
+  return s.length % 2 ? s[mid] : (s[mid-1]+s[mid])/2;
+}
+function renderPricingForecast(){
+  const el = document.getElementById('pricingForecast');
+  if(!el) return;
+  const year = new Date().getFullYear();
+  const now = new Date();
+  const startOfYear = new Date(year,0,1);
+  const daysElapsed = Math.max(1, Math.floor((now-startOfYear)/86400000)+1);
+  const isLeap = (year%4===0 && year%100!==0) || year%400===0;
+  const daysInYear = isLeap ? 366 : 365;
+
+  const paidToDate = DATA.invoices.filter(i=>{
+    if(i.status !== 'uhradena') return false;
+    const project = DATA.projects.find(p=>p.id===i.projectId);
+    const dateStr = (project && project.deadline) || i.due;
+    return dateStr && dateStr.startsWith(String(year));
+  }).reduce((s,i)=>s+Number(i.amount||0),0);
+
+  const bookedThisYear = DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(String(year)))
+    .reduce((s,p)=>s+Number(p.budget||0),0);
+
+  const runRate = paidToDate / daysElapsed * daysInYear;
+  const estimate = Math.max(runRate, bookedThisYear);
+  const pctYearElapsed = Math.min(100, Math.round(daysElapsed/daysInYear*100));
+
+  el.innerHTML = `
+    <div class="grid-stats" style="margin-bottom:14px;">
+      <div class="stat-card"><div class="stat-num">${fmtMoney(paidToDate)}</div><div class="stat-label">Vyplatené doteraz (${year})</div></div>
+      <div class="stat-card"><div class="stat-num">${fmtMoney(bookedThisYear)}</div><div class="stat-label">Zabookovaná hodnota za ${year}</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--accent);">${fmtMoney(estimate)}</div><div class="stat-label">Odhad celoročného príjmu</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+      <span>Prešlo ${pctYearElapsed}% roka ${year}</span>
+      <span class="row-sub">Tempo podľa doterajších platieb: ${fmtMoney(runRate)}/rok</span>
+    </div>
+    <div class="hbar-track"><div class="hbar-fill" style="width:${pctYearElapsed}%;"></div></div>
+  `;
+}
+function renderAvgPriceBreakdown(){
+  const typeEl = document.getElementById('avgPriceByType');
+  const balikEl = document.getElementById('avgPriceByBalik');
+  if(!typeEl || !balikEl) return;
+  const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip', ine:'Iné' };
+
+  const byType = {};
+  DATA.projects.forEach(p=>{
+    if(!p.budget) return;
+    const t = p.type || 'ine';
+    if(!byType[t]) byType[t] = [];
+    byType[t].push(Number(p.budget));
+  });
+  const typeRows = Object.keys(byType).map(t=>{
+    const vals = byType[t];
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    return { label: typeLabels[t]||t, count: vals.length, avg, median: median(vals) };
+  }).sort((a,b)=>b.avg-a.avg);
+  typeEl.innerHTML = typeRows.length ? `<table><thead><tr><th>Typ</th><th>Počet</th><th>Priemer</th><th>Medián</th></tr></thead><tbody>
+    ${typeRows.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td class="num">${r.count}</td><td class="num">${fmtMoney(r.avg)}</td><td class="num">${fmtMoney(r.median)}</td></tr>`).join('')}
+  </tbody></table>` : '<div class="empty">Zatiaľ žiadne dáta.</div>';
+
+  const byBalik = {};
+  DATA.projects.forEach(p=>{
+    const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
+    if(!b || !p.budget) return;
+    if(!byBalik[b]) byBalik[b] = [];
+    byBalik[b].push(Number(p.budget));
+  });
+  const balikRows = Object.keys(byBalik).map(b=>{
+    const vals = byBalik[b];
+    const avg = vals.reduce((a,b2)=>a+b2,0)/vals.length;
+    return { label: 'Balík '+b, count: vals.length, avg, median: median(vals) };
+  }).sort((a,b)=>b.avg-a.avg);
+  balikEl.innerHTML = balikRows.length ? `<table><thead><tr><th>Balík</th><th>Počet</th><th>Priemer</th><th>Medián</th></tr></thead><tbody>
+    ${balikRows.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td class="num">${r.count}</td><td class="num">${fmtMoney(r.avg)}</td><td class="num">${fmtMoney(r.median)}</td></tr>`).join('')}
+  </tbody></table>` : '<div class="empty">Zatiaľ žiadne dáta.</div>';
+}
 function renderPricingCharts(){
   renderYearsAndSeasonCharts();
+  renderPricingForecast();
+  renderAvgPriceBreakdown();
   const projects = DATA.projects;
 
   // Revenue by month (based on deadline)
@@ -344,6 +427,48 @@ function renderYearsAndSeasonCharts(){
   const yearFmt = yearsOverviewMode==='paid' ? (v=>fmtMoney(v)) : (v=>String(v));
   renderMiniBarChart('yearsBarChart', years, yearValues, yearFmt);
 
+  // Porovnanie rok/rok — "k dnešnému dňu" (rovnaký deň v roku), aby bolo porovnanie férové
+  // aj v priebehu roka, nie len celoročné súčty.
+  const yoyEl = document.getElementById('yearsYoyBadge');
+  if(yoyEl){
+    const now = new Date();
+    const thisYear = now.getFullYear();
+    const lastYear = thisYear - 1;
+    const cutoffMD = `${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const toDateVal = (year, useCount)=>{
+      let sum = 0;
+      if(yearsOverviewMode === 'paid'){
+        DATA.invoices.filter(i=>i.status==='uhradena').forEach(i=>{
+          const project = DATA.projects.find(p=>p.id===i.projectId);
+          const dateStr = (project && project.deadline) || i.due;
+          if(!dateStr || !dateStr.startsWith(String(year))) return;
+          if(dateStr.slice(5,10) > cutoffMD) return;
+          sum += useCount ? 1 : (Number(i.amount)||0);
+        });
+      }else{
+        projects.forEach(p=>{
+          if(!p.deadline || !p.deadline.startsWith(String(year))) return;
+          if(p.deadline.slice(5,10) > cutoffMD) return;
+          sum += useCount ? 1 : (Number(p.budget)||0);
+        });
+      }
+      return sum;
+    };
+    const thisYearToDate = toDateVal(thisYear, yearsOverviewMode!=='paid');
+    const lastYearToDate = toDateVal(lastYear, yearsOverviewMode!=='paid');
+    if(lastYearToDate > 0){
+      const diffPct = Math.round((thisYearToDate - lastYearToDate) / lastYearToDate * 100);
+      const arrow = diffPct >= 0 ? '📈' : '📉';
+      const sign = diffPct >= 0 ? '+' : '';
+      const metric = yearsOverviewMode==='paid' ? 'vyplatených faktúr' : 'zákaziek';
+      yoyEl.innerHTML = `${arrow} K dnešnému dňu (${cutoffMD.replace('-','.')}.) máš <b style="color:var(--text);">${sign}${diffPct}%</b> ${metric} oproti rovnakému obdobiu ${lastYear} (${lastYearToDate} vtedy → ${thisYearToDate} teraz)`;
+    }else if(thisYearToDate > 0){
+      yoyEl.innerHTML = `📈 Za ${lastYear} nebolo k tomuto dátumu zaznamenané nič — tento rok už máš ${thisYearToDate}.`;
+    }else{
+      yoyEl.innerHTML = '';
+    }
+  }
+
   const tableEl = document.getElementById('yearsOverviewTable');
   if(tableEl){
     if(!years.length){
@@ -367,4 +492,23 @@ function renderYearsAndSeasonCharts(){
     if(m>=0 && m<12) monthCounts[m]++;
   });
   renderMiniBarChart('seasonBarChart', monthNames, monthCounts, v=>String(v));
+
+  const insightEl = document.getElementById('seasonInsight');
+  if(insightEl){
+    const total = monthCounts.reduce((a,b)=>a+b,0);
+    if(total === 0){
+      insightEl.innerHTML = '';
+    }else{
+      const indexed = monthNames.map((name,i)=>({ name, count: monthCounts[i] }));
+      const sorted = indexed.slice().sort((a,b)=>b.count-a.count);
+      const topMonths = sorted.filter(m=>m.count>0).slice(0,2);
+      const weakMonths = sorted.filter(m=>m.count>0).slice(-2).reverse();
+      const topTxt = topMonths.map(m=>`${m.name} (${m.count})`).join(', ');
+      const weakTxt = weakMonths.length && weakMonths[0].name !== topMonths[0]?.name
+        ? weakMonths.map(m=>`${m.name} (${m.count})`).join(', ') : '';
+      let txt = `🔥 Najsilnejšie mesiace: <b style="color:var(--text);">${topTxt}</b> — tu má zmysel zvážiť vyššie ceny alebo skorší booking.`;
+      if(weakTxt) txt += ` 🌤️ Najslabšie: <b style="color:var(--text);">${weakTxt}</b> — priestor na akcie alebo iný typ zákaziek.`;
+      insightEl.innerHTML = txt;
+    }
+  }
 }

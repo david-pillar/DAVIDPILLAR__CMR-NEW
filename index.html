@@ -472,7 +472,8 @@
           <button class="btn ghost small years-view-btn active" data-mode="count" onclick="setYearsOverviewMode('count', this)">📌 Zabookované</button>
           <button class="btn ghost small years-view-btn" data-mode="paid" onclick="setYearsOverviewMode('paid', this)">💰 Vyplatené</button>
         </div>
-        <p class="row-sub" style="margin-bottom:12px;" id="yearsOverviewSubtext"></p>
+        <p class="row-sub" style="margin-bottom:4px;" id="yearsOverviewSubtext"></p>
+        <p class="row-sub" style="margin-bottom:12px;" id="yearsYoyBadge"></p>
         <div class="cols-2">
           <div class="mini-barchart" id="yearsBarChart"></div>
           <div id="yearsOverviewTable"></div>
@@ -480,9 +481,31 @@
       </div>
 
       <div class="panel" style="margin-top:20px;">
+        <h3>🔮 Prognóza do konca roka</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Odhad na základe doterajšieho tempa príjmov a už zabookovaných zákaziek na tento rok.</p>
+        <div id="pricingForecast"></div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <h3>💶 Priemerná cena zákazky</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Priemer a medián podľa typu a balíka — pomôže vidieť, či sa oplatí ceny upraviť.</p>
+        <div class="cols-2">
+          <div>
+            <p class="row-sub" style="margin-bottom:8px;">Podľa typu zákazky</p>
+            <div id="avgPriceByType"></div>
+          </div>
+          <div>
+            <p class="row-sub" style="margin-bottom:8px;">Podľa balíka</p>
+            <div id="avgPriceByBalik"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
         <h3>🌸 Sezónnosť — v ktorých mesiacoch prichádza najviac zákaziek</h3>
         <p class="row-sub" style="margin-bottom:12px;">Počet zákaziek podľa mesiaca v roku, spočítané naprieč všetkými rokmi — pomôže naplánovať, kedy čakať nával a kedy pokoj.</p>
         <div class="mini-barchart" id="seasonBarChart"></div>
+        <p class="row-sub" style="margin-top:12px;" id="seasonInsight"></p>
       </div>
 
       <div class="panel" style="margin-top:20px;">
