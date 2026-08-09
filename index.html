@@ -474,7 +474,7 @@
         </div>
         <p class="row-sub" style="margin-bottom:12px;" id="yearsOverviewSubtext"></p>
         <div class="cols-2">
-          <div><canvas id="chartRevenueByYear" height="220"></canvas></div>
+          <div class="mini-barchart" id="yearsBarChart"></div>
           <div id="yearsOverviewTable"></div>
         </div>
       </div>
@@ -482,7 +482,7 @@
       <div class="panel" style="margin-top:20px;">
         <h3>🌸 Sezónnosť — v ktorých mesiacoch prichádza najviac zákaziek</h3>
         <p class="row-sub" style="margin-bottom:12px;">Počet zákaziek podľa mesiaca v roku, spočítané naprieč všetkými rokmi — pomôže naplánovať, kedy čakať nával a kedy pokoj.</p>
-        <canvas id="chartBookingsBySeason" height="200"></canvas>
+        <div class="mini-barchart" id="seasonBarChart"></div>
       </div>
 
       <div class="panel" style="margin-top:20px;">
@@ -490,16 +490,16 @@
         <div class="cols-2">
           <div>
             <p class="row-sub" style="margin-bottom:8px;">Tržby podľa mesiaca</p>
-            <canvas id="chartRevenueMonth" height="220"></canvas>
+            <div class="hbar-list" id="revenueMonthBars"></div>
           </div>
           <div>
             <p class="row-sub" style="margin-bottom:8px;">Tržby podľa balíka</p>
-            <canvas id="chartRevenueBalik" height="220"></canvas>
+            <div class="hbar-list" id="revenueBalikBars"></div>
           </div>
         </div>
         <div style="margin-top:24px;">
           <p class="row-sub" style="margin-bottom:8px;">Tržby podľa typu zákazky</p>
-          <canvas id="chartRevenueType" height="180"></canvas>
+          <div class="hbar-list" id="revenueTypeBars"></div>
         </div>
       </div>
     </div>

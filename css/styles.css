@@ -360,6 +360,19 @@
   .cols-2{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;}
   @media (max-width:900px){.cols-2{grid-template-columns:1fr;}}
 
+  /* ---- Dependency-free CSS bar charts (Cenotvorba) — no Chart.js needed ---- */
+  .mini-barchart{display:flex;align-items:flex-end;gap:10px;height:200px;padding:20px 4px 0;}
+  .mini-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+  .mini-bar-value{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text);margin-bottom:6px;white-space:nowrap;}
+  .mini-bar-track{width:100%;flex:1;display:flex;align-items:flex-end;}
+  .mini-bar{width:100%;min-height:3px;border-radius:6px 6px 0 0;background:linear-gradient(180deg, var(--accent), var(--accent-hover));transition:height .3s ease;}
+  .mini-bar-label{font-size:11px;color:var(--text-dim);margin-top:8px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .hbar-list{display:flex;flex-direction:column;gap:12px;}
+  .hbar-row-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+  .hbar-row-head .hbar-value{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
+  .hbar-track{height:10px;background:var(--surface-3);border-radius:20px;overflow:hidden;}
+  .hbar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg, var(--accent), var(--accent-hover));transition:width .3s ease;}
+
   /* ---- Dashboard Bento Grid: dlaždice rôznej veľkosti podľa dôležitosti,
      nie rovnaký stoh panelov pod sebou. Počasie je teraz v prvom rade spolu
      s rezerváciami/zákazkami (nie schované dole pri výročiach), nech ho

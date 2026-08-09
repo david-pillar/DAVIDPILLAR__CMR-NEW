@@ -230,12 +230,41 @@ async function savePricingBase(){
   if(document.getElementById('view-projectform').classList.contains('active')) recalcProjectPrice();
 }
 
-var chartRevenueMonth, chartRevenueBalik, chartRevenueType;
+/* ---- Dependency-free CSS bar chart helpers (no Chart.js — funguje vždy, aj keď
+   sa externá knižnica na grafy nenačíta kvôli pomalému/blokovanému pripojeniu). ---- */
+function renderMiniBarChart(containerId, labels, values, fmtFn){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!labels.length){ el.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>'; return; }
+  const maxVal = Math.max(...values, 1);
+  const fmt = fmtFn || (v=>String(v));
+  el.innerHTML = labels.map((label,i)=>{
+    const v = values[i]||0;
+    const pct = Math.max(Math.round(v/maxVal*100), v>0?4:0);
+    return `<div class="mini-bar-col">
+      <div class="mini-bar-value">${fmt(v)}</div>
+      <div class="mini-bar-track"><div class="mini-bar" style="height:${pct}%;"></div></div>
+      <div class="mini-bar-label">${escapeHtml(String(label))}</div>
+    </div>`;
+  }).join('');
+}
+function renderHBarList(containerId, items, colorFn){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!items.length){ el.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>'; return; }
+  const maxVal = Math.max(...items.map(it=>it.value), 1);
+  el.innerHTML = items.map((it,i)=>{
+    const pct = Math.max(Math.round(it.value/maxVal*100), it.value>0?2:0);
+    const color = colorFn ? colorFn(it,i) : null;
+    return `<div>
+      <div class="hbar-row-head"><span>${escapeHtml(it.label)}</span><span class="hbar-value">${fmtMoney(it.value)}</span></div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;${color?`background:${color};`:''}"></div></div>
+    </div>`;
+  }).join('');
+}
+
 function renderPricingCharts(){
-  // Tabuľka/dáta v "Ako mi idu roky" a sezónnosti nepotrebujú Chart.js, preto bežia
-  // vždy — aj keby sa knižnica na grafy z nejakého dôvodu nenačítala (pomalé pripojenie a pod.).
   renderYearsAndSeasonCharts();
-  if(typeof Chart === 'undefined') return;
   const projects = DATA.projects;
 
   // Revenue by month (based on deadline)
@@ -246,11 +275,11 @@ function renderPricingCharts(){
     monthMap[key] = (monthMap[key]||0) + Number(p.budget);
   });
   const monthKeys = Object.keys(monthMap).sort();
-  const monthLabels = monthKeys.map(k=>{
+  const monthItems = monthKeys.map(k=>{
     const [y,m] = k.split('-');
-    return `${m}/${y.slice(2)}`;
+    return { label: `${m}/${y.slice(2)}`, value: monthMap[k] };
   });
-  const monthData = monthKeys.map(k=>monthMap[k]);
+  renderHBarList('revenueMonthBars', monthItems);
 
   // Revenue by balík
   const balikMap = {};
@@ -259,6 +288,9 @@ function renderPricingCharts(){
     if(!b || !p.budget) return;
     balikMap[b] = (balikMap[b]||0) + Number(p.budget);
   });
+  const balikColors = ['#e85002','#6fa3d8','#7cb88f','#e08fa8'];
+  const balikItems = Object.keys(balikMap).map(k=>({ label:'Balík '+k, value: balikMap[k] }));
+  renderHBarList('revenueBalikBars', balikItems, (it,i)=>balikColors[i % balikColors.length]);
 
   // Revenue by type
   const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip', ine:'Iné' };
@@ -268,38 +300,12 @@ function renderPricingCharts(){
     const t = p.type || 'ine';
     typeMap[t] = (typeMap[t]||0) + Number(p.budget);
   });
-
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e85002';
-  const textDim = getComputedStyle(document.documentElement).getPropertyValue('--text-dim').trim() || '#a39c90';
-  const gridColor = 'rgba(255,255,255,0.06)';
-  Chart.defaults.color = textDim;
-  Chart.defaults.borderColor = gridColor;
-
-  if(chartRevenueMonth) chartRevenueMonth.destroy();
-  chartRevenueMonth = new Chart(document.getElementById('chartRevenueMonth'), {
-    type:'bar',
-    data:{ labels: monthLabels, datasets:[{ label:'Tržby (€)', data: monthData, backgroundColor: accent, borderRadius:4 }]},
-    options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor} }, x:{ grid:{display:false} } } }
-  });
-
-  if(chartRevenueBalik) chartRevenueBalik.destroy();
-  chartRevenueBalik = new Chart(document.getElementById('chartRevenueBalik'), {
-    type:'doughnut',
-    data:{ labels: Object.keys(balikMap).map(k=>'Balík '+k), datasets:[{ data: Object.values(balikMap), backgroundColor:['#e85002','#6fa3d8','#7cb88f','#e08fa8'] }]},
-    options:{ plugins:{legend:{position:'bottom'}} }
-  });
-
-  if(chartRevenueType) chartRevenueType.destroy();
-  chartRevenueType = new Chart(document.getElementById('chartRevenueType'), {
-    type:'bar',
-    data:{ labels: Object.keys(typeMap).map(k=>typeLabels[k]||k), datasets:[{ label:'Tržby (€)', data: Object.values(typeMap), backgroundColor:'#6fa3d8', borderRadius:4 }]},
-    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, grid:{color:gridColor} }, y:{ grid:{display:false} } } }
-  });
+  const typeItems = Object.keys(typeMap).map(k=>({ label: typeLabels[k]||k, value: typeMap[k] }));
+  renderHBarList('revenueTypeBars', typeItems);
 }
 /* ---- "Ako mi idu roky" — prepínateľné medzi "Zabookované" (počet zákaziek podľa roku termínu,
    funguje aj keď ešte nemáš vyplnené ceny) a "Vyplatené" (reálne prijaté peniaze z uhradených
    faktúr, podľa roku zákazky) — a sezónnosť (v ktorých mesiacoch prichádza najviac zákaziek). ---- */
-var chartRevenueByYear, chartBookingsBySeason;
 var yearsOverviewMode = 'count';
 function setYearsOverviewMode(mode, btnEl){
   yearsOverviewMode = mode;
@@ -308,8 +314,6 @@ function setYearsOverviewMode(mode, btnEl){
   renderYearsAndSeasonCharts();
 }
 function renderYearsAndSeasonCharts(){
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e85002';
-  const gridColor = 'rgba(255,255,255,0.06)';
   const projects = DATA.projects;
   const subtextEl = document.getElementById('yearsOverviewSubtext');
 
@@ -336,18 +340,10 @@ function renderYearsAndSeasonCharts(){
     });
   }
   const years = Object.keys(yearMap).sort();
-  const chartLabel = yearsOverviewMode==='paid' ? 'Vyplatené (€)' : 'Počet zákaziek';
-  const chartData = years.map(y=> yearsOverviewMode==='paid' ? yearMap[y].value : yearMap[y].count);
+  const yearValues = years.map(y=> yearsOverviewMode==='paid' ? yearMap[y].value : yearMap[y].count);
+  const yearFmt = yearsOverviewMode==='paid' ? (v=>fmtMoney(v)) : (v=>String(v));
+  renderMiniBarChart('yearsBarChart', years, yearValues, yearFmt);
 
-  if(chartRevenueByYear) chartRevenueByYear.destroy();
-  const yearCanvas = document.getElementById('chartRevenueByYear');
-  if(yearCanvas && typeof Chart !== 'undefined'){
-    chartRevenueByYear = new Chart(yearCanvas, {
-      type:'bar',
-      data:{ labels: years, datasets:[{ label: chartLabel, data: chartData, backgroundColor: accent, borderRadius:4 }]},
-      options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor}, ticks:{ precision: yearsOverviewMode==='paid'?undefined:0 } }, x:{ grid:{display:false} } } }
-    });
-  }
   const tableEl = document.getElementById('yearsOverviewTable');
   if(tableEl){
     if(!years.length){
@@ -370,13 +366,5 @@ function renderYearsAndSeasonCharts(){
     const m = Number(p.deadline.slice(5,7)) - 1;
     if(m>=0 && m<12) monthCounts[m]++;
   });
-  if(chartBookingsBySeason) chartBookingsBySeason.destroy();
-  const seasonCanvas = document.getElementById('chartBookingsBySeason');
-  if(seasonCanvas && typeof Chart !== 'undefined'){
-    chartBookingsBySeason = new Chart(seasonCanvas, {
-      type:'bar',
-      data:{ labels: monthNames, datasets:[{ label:'Počet zákaziek', data: monthCounts, backgroundColor:'#6fa3d8', borderRadius:4 }]},
-      options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor}, ticks:{ precision:0 } }, x:{ grid:{display:false} } } }
-    });
-  }
+  renderMiniBarChart('seasonBarChart', monthNames, monthCounts, v=>String(v));
 }
