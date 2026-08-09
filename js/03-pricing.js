@@ -232,7 +232,7 @@ async function savePricingBase(){
 
 /* ---- Dependency-free CSS bar chart helpers (no Chart.js — funguje vždy, aj keď
    sa externá knižnica na grafy nenačíta kvôli pomalému/blokovanému pripojeniu). ---- */
-function renderMiniBarChart(containerId, labels, values, fmtFn){
+function renderMiniBarChart(containerId, labels, values, fmtFn, onClickFn){
   const el = document.getElementById(containerId);
   if(!el) return;
   if(!labels.length){ el.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>'; return; }
@@ -241,7 +241,8 @@ function renderMiniBarChart(containerId, labels, values, fmtFn){
   el.innerHTML = labels.map((label,i)=>{
     const v = values[i]||0;
     const pct = Math.max(Math.round(v/maxVal*100), v>0?4:0);
-    return `<div class="mini-bar-col">
+    const clickable = typeof onClickFn === 'function';
+    return `<div class="mini-bar-col${clickable?' mini-bar-col-clickable':''}" ${clickable?`onclick="(${onClickFn.name})('${label}')" title="Klikni pre detail"`:''}>
       <div class="mini-bar-value">${fmt(v)}</div>
       <div class="mini-bar-track"><div class="mini-bar" style="height:${pct}%;"></div></div>
       <div class="mini-bar-label">${escapeHtml(String(label))}</div>
@@ -293,6 +294,23 @@ function renderPricingForecast(){
   const estimate = Math.max(runRate, bookedThisYear);
   const pctYearElapsed = Math.min(100, Math.round(daysElapsed/daysInYear*100));
 
+  const goal = DATA.settings.yearlyGoals && DATA.settings.yearlyGoals[year];
+  let goalHtml = '';
+  if(goal){
+    const pctPaid = Math.min(100, Math.round(paidToDate/goal*100));
+    const pctEstimate = Math.round(estimate/goal*100);
+    const onTrack = estimate >= goal;
+    goalHtml = `
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+          <span>🎯 Ročný cieľ: <b style="color:var(--text);">${fmtMoney(goal)}</b></span>
+          <span class="row-sub" style="${onTrack?'color:var(--green-page);':'color:#f0827f;'}">${onTrack ? 'Podľa odhadu cieľ splníš 🎉' : 'Podľa doterajšieho tempa cieľ zatiaľ nesplníš'}</span>
+        </div>
+        <div class="hbar-track" style="margin-bottom:6px;"><div class="hbar-fill" style="width:${pctPaid}%;"></div></div>
+        <div class="row-sub">Vyplatené doteraz: ${pctPaid}% cieľa · Odhad na konci roka: ${pctEstimate}% cieľa</div>
+      </div>`;
+  }
+
   el.innerHTML = `
     <div class="grid-stats" style="margin-bottom:14px;">
       <div class="stat-card"><div class="stat-num">${fmtMoney(paidToDate)}</div><div class="stat-label">Vyplatené doteraz (${year})</div></div>
@@ -304,6 +322,7 @@ function renderPricingForecast(){
       <span class="row-sub">Tempo podľa doterajších platieb: ${fmtMoney(runRate)}/rok</span>
     </div>
     <div class="hbar-track"><div class="hbar-fill" style="width:${pctYearElapsed}%;"></div></div>
+    ${goalHtml}
   `;
 }
 function renderAvgPriceBreakdown(){
@@ -329,11 +348,18 @@ function renderAvgPriceBreakdown(){
   </tbody></table>` : '<div class="empty">Zatiaľ žiadne dáta.</div>';
 
   const byBalik = {};
+  const byBalikByYear = {}; // balikId -> { year: [budgets] }
   DATA.projects.forEach(p=>{
     const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
     if(!b || !p.budget) return;
     if(!byBalik[b]) byBalik[b] = [];
     byBalik[b].push(Number(p.budget));
+    if(p.deadline){
+      const y = p.deadline.slice(0,4);
+      if(!byBalikByYear[b]) byBalikByYear[b] = {};
+      if(!byBalikByYear[b][y]) byBalikByYear[b][y] = [];
+      byBalikByYear[b][y].push(Number(p.budget));
+    }
   });
   const balikRows = Object.keys(byBalik).map(b=>{
     const vals = byBalik[b];
@@ -343,6 +369,42 @@ function renderAvgPriceBreakdown(){
   balikEl.innerHTML = balikRows.length ? `<table><thead><tr><th>Balík</th><th>Počet</th><th>Priemer</th><th>Medián</th></tr></thead><tbody>
     ${balikRows.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td class="num">${r.count}</td><td class="num">${fmtMoney(r.avg)}</td><td class="num">${fmtMoney(r.median)}</td></tr>`).join('')}
   </tbody></table>` : '<div class="empty">Zatiaľ žiadne dáta.</div>';
+
+  const trendEl = document.getElementById('balikPriceTrend');
+  if(trendEl){
+    const trendRows = Object.keys(byBalikByYear).map(b=>{
+      const yearAvgs = {};
+      Object.keys(byBalikByYear[b]).forEach(y=>{
+        const vals = byBalikByYear[b][y];
+        yearAvgs[y] = vals.reduce((a,c)=>a+c,0)/vals.length;
+      });
+      const years = Object.keys(yearAvgs).sort();
+      if(years.length < 2) return null;
+      const firstY = years[0], lastY = years[years.length-1];
+      const firstV = yearAvgs[firstY], lastV = yearAvgs[lastY];
+      const span = Number(lastY) - Number(firstY);
+      if(span <= 0 || firstV <= 0) return null;
+      const perYearGrowth = Math.pow(lastV/firstV, 1/span) - 1;
+      const nextYear = Number(lastY) + 1;
+      const suggested = lastV * (1 + perYearGrowth);
+      return { label: 'Balík '+b, firstY, lastY, firstV, lastV, perYearGrowth, nextYear, suggested };
+    }).filter(Boolean);
+    if(!trendRows.length){
+      trendEl.innerHTML = '';
+    }else{
+      trendEl.innerHTML = `<p class="row-sub" style="margin-bottom:8px;">📈 Trend cien podľa rokov — odporúčaná cena na ${trendRows[0].nextYear} pri zachovaní doterajšieho tempa rastu:</p>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+        ${trendRows.map(r=>{
+          const pct = Math.round(r.perYearGrowth*100);
+          const dirTxt = pct >= 0 ? `rastie ~${pct}%/rok` : `klesá ~${Math.abs(pct)}%/rok`;
+          return `<div style="font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <span>${escapeHtml(r.label)}: ${fmtMoney(r.firstV)} (${r.firstY}) → ${fmtMoney(r.lastV)} (${r.lastY}), ${dirTxt}</span>
+            <span><b style="color:var(--accent);">Odporúčaná cena ${r.nextYear}: ${fmtMoney(r.suggested)}</b></span>
+          </div>`;
+        }).join('')}
+        </div>`;
+    }
+  }
 }
 function renderPricingCharts(){
   renderYearsAndSeasonCharts();
@@ -425,7 +487,7 @@ function renderYearsAndSeasonCharts(){
   const years = Object.keys(yearMap).sort();
   const yearValues = years.map(y=> yearsOverviewMode==='paid' ? yearMap[y].value : yearMap[y].count);
   const yearFmt = yearsOverviewMode==='paid' ? (v=>fmtMoney(v)) : (v=>String(v));
-  renderMiniBarChart('yearsBarChart', years, yearValues, yearFmt);
+  renderMiniBarChart('yearsBarChart', years, yearValues, yearFmt, goToProjectsYear);
 
   // Porovnanie rok/rok — "k dnešnému dňu" (rovnaký deň v roku), aby bolo porovnanie férové
   // aj v priebehu roka, nie len celoročné súčty.
@@ -475,11 +537,11 @@ function renderYearsAndSeasonCharts(){
       tableEl.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>';
     }else if(yearsOverviewMode==='paid'){
       tableEl.innerHTML = `<table><thead><tr><th>Rok</th><th>Uhradené faktúry</th><th>Vyplatené</th></tr></thead><tbody>
-        ${years.map(y=>`<tr><td>${y}</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
+        ${years.map(y=>`<tr class="clickable-row" onclick="goToProjectsYear('${y}')" title="Zobraziť zákazky za rok ${y}"><td>${y} →</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
       </tbody></table>`;
     }else{
       tableEl.innerHTML = `<table><thead><tr><th>Rok</th><th>Zákaziek</th><th>Rozpočet spolu</th></tr></thead><tbody>
-        ${years.map(y=>`<tr><td>${y}</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
+        ${years.map(y=>`<tr class="clickable-row" onclick="goToProjectsYear('${y}')" title="Zobraziť zákazky za rok ${y}"><td>${y} →</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
       </tbody></table>`;
     }
   }
@@ -511,4 +573,20 @@ function renderYearsAndSeasonCharts(){
       insightEl.innerHTML = txt;
     }
   }
+}
+/* ---- Prekliknutie z grafu/tabuľky rokov priamo do Zákaziek, filtrovaných na daný rok ---- */
+function goToProjectsYear(year){
+  if(!year) return;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const navItem = document.querySelector('.nav-item[data-view="projects"]');
+  if(navItem) navItem.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-projects').classList.add('active');
+  currentView = 'projects';
+  const yearNum = Number(year);
+  if(yearNum && yearNum > getYearTileMaxYear()){
+    localStorage.setItem('slate:yearTileMaxYear', String(yearNum));
+  }
+  setYearFilter(String(year));
+  showToast(`Zákazky za rok ${year}`);
 }

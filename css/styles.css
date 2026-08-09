@@ -372,6 +372,11 @@
   .hbar-row-head .hbar-value{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
   .hbar-track{height:10px;background:var(--surface-3);border-radius:20px;overflow:hidden;}
   .hbar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg, var(--accent), var(--accent-hover));transition:width .3s ease;}
+  .mini-bar-col-clickable{cursor:pointer;border-radius:6px;transition:transform .15s ease,background .15s ease;}
+  .mini-bar-col-clickable:hover{background:var(--surface-2);transform:translateY(-2px);}
+  .mini-bar-col-clickable:hover .mini-bar{background:linear-gradient(180deg, var(--accent-hover), var(--accent));}
+  tr.clickable-row{cursor:pointer;}
+  tr.clickable-row:hover{background:var(--surface-2);}
 
   /* ---- Dashboard Bento Grid: dlaždice rôznej veľkosti podľa dôležitosti,
      nie rovnaký stoh panelov pod sebou. Počasie je teraz v prvom rade spolu
