@@ -292,4 +292,55 @@ function renderPricingCharts(){
     data:{ labels: Object.keys(typeMap).map(k=>typeLabels[k]||k), datasets:[{ label:'Tržby (€)', data: Object.values(typeMap), backgroundColor:'#6fa3d8', borderRadius:4 }]},
     options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, grid:{color:gridColor} }, y:{ grid:{display:false} } } }
   });
+
+  renderYearsAndSeasonCharts(accent, gridColor);
+}
+/* ---- "Ako mi idu roky" (obrat+počet podľa roku, vrátane archivovaných) a sezónnosť
+   (v ktorých mesiacoch v roku prichádza najviac zákaziek, spočítané naprieč všetkými rokmi) ---- */
+var chartRevenueByYear, chartBookingsBySeason;
+function renderYearsAndSeasonCharts(accent, gridColor){
+  const projects = DATA.projects;
+
+  const yearMap = {};
+  projects.forEach(p=>{
+    if(!p.deadline) return;
+    const y = p.deadline.slice(0,4);
+    if(!yearMap[y]) yearMap[y] = { count:0, revenue:0 };
+    yearMap[y].count++;
+    yearMap[y].revenue += Number(p.budget)||0;
+  });
+  const years = Object.keys(yearMap).sort();
+
+  if(chartRevenueByYear) chartRevenueByYear.destroy();
+  const yearCanvas = document.getElementById('chartRevenueByYear');
+  if(yearCanvas){
+    chartRevenueByYear = new Chart(yearCanvas, {
+      type:'bar',
+      data:{ labels: years, datasets:[{ label:'Obrat (€)', data: years.map(y=>yearMap[y].revenue), backgroundColor: accent, borderRadius:4 }]},
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor} }, x:{ grid:{display:false} } } }
+    });
+  }
+  const tableEl = document.getElementById('yearsOverviewTable');
+  if(tableEl){
+    tableEl.innerHTML = years.length ? `<table><thead><tr><th>Rok</th><th>Zákaziek</th><th>Obrat</th></tr></thead><tbody>
+      ${years.map(y=>`<tr><td>${y}</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].revenue)}</td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">Zatiaľ žiadne zákazky s termínom.</div>';
+  }
+
+  const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
+  const monthCounts = new Array(12).fill(0);
+  projects.forEach(p=>{
+    if(!p.deadline) return;
+    const m = Number(p.deadline.slice(5,7)) - 1;
+    if(m>=0 && m<12) monthCounts[m]++;
+  });
+  if(chartBookingsBySeason) chartBookingsBySeason.destroy();
+  const seasonCanvas = document.getElementById('chartBookingsBySeason');
+  if(seasonCanvas){
+    chartBookingsBySeason = new Chart(seasonCanvas, {
+      type:'bar',
+      data:{ labels: monthNames, datasets:[{ label:'Počet zákaziek', data: monthCounts, backgroundColor:'#6fa3d8', borderRadius:4 }]},
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor}, ticks:{ precision:0 } }, x:{ grid:{display:false} } } }
+    });
+  }
 }
