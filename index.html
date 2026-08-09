@@ -468,7 +468,11 @@
 
       <div class="panel" style="margin-top:20px;">
         <h3>📅 Ako mi idu roky</h3>
-        <p class="row-sub" style="margin-bottom:12px;">Obrat a počet zákaziek podľa roku termínu (vrátane archivovaných rokov) — nezaplatené aj zaplatené zákazky, podľa toho čo máš vyplnené v rozpočte.</p>
+        <div style="display:flex;gap:8px;margin:10px 0 4px;">
+          <button class="btn ghost small years-view-btn active" data-mode="count" onclick="setYearsOverviewMode('count', this)">📌 Zabookované</button>
+          <button class="btn ghost small years-view-btn" data-mode="paid" onclick="setYearsOverviewMode('paid', this)">💰 Vyplatené</button>
+        </div>
+        <p class="row-sub" style="margin-bottom:12px;" id="yearsOverviewSubtext"></p>
         <div class="cols-2">
           <div><canvas id="chartRevenueByYear" height="220"></canvas></div>
           <div id="yearsOverviewTable"></div>

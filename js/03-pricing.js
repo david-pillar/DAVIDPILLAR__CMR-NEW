@@ -293,38 +293,74 @@ function renderPricingCharts(){
     options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, grid:{color:gridColor} }, y:{ grid:{display:false} } } }
   });
 
-  renderYearsAndSeasonCharts(accent, gridColor);
+  renderYearsAndSeasonCharts();
 }
-/* ---- "Ako mi idu roky" (obrat+počet podľa roku, vrátane archivovaných) a sezónnosť
-   (v ktorých mesiacoch v roku prichádza najviac zákaziek, spočítané naprieč všetkými rokmi) ---- */
+/* ---- "Ako mi idu roky" — prepínateľné medzi "Zabookované" (počet zákaziek podľa roku termínu,
+   funguje aj keď ešte nemáš vyplnené ceny) a "Vyplatené" (reálne prijaté peniaze z uhradených
+   faktúr, podľa roku zákazky) — a sezónnosť (v ktorých mesiacoch prichádza najviac zákaziek). ---- */
 var chartRevenueByYear, chartBookingsBySeason;
-function renderYearsAndSeasonCharts(accent, gridColor){
+var yearsOverviewMode = 'count';
+function setYearsOverviewMode(mode, btnEl){
+  yearsOverviewMode = mode;
+  document.querySelectorAll('.years-view-btn').forEach(b=>b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+  renderYearsAndSeasonCharts();
+}
+function renderYearsAndSeasonCharts(){
+  if(typeof Chart === 'undefined') return;
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e85002';
+  const gridColor = 'rgba(255,255,255,0.06)';
   const projects = DATA.projects;
+  const subtextEl = document.getElementById('yearsOverviewSubtext');
 
-  const yearMap = {};
-  projects.forEach(p=>{
-    if(!p.deadline) return;
-    const y = p.deadline.slice(0,4);
-    if(!yearMap[y]) yearMap[y] = { count:0, revenue:0 };
-    yearMap[y].count++;
-    yearMap[y].revenue += Number(p.budget)||0;
-  });
+  const yearMap = {}; // year -> { count, value }
+  if(yearsOverviewMode === 'paid'){
+    if(subtextEl) subtextEl.textContent = 'Skutočne prijaté peniaze z uhradených faktúr, podľa roku termínu zákazky.';
+    DATA.invoices.filter(i=>i.status==='uhradena').forEach(i=>{
+      const project = DATA.projects.find(p=>p.id===i.projectId);
+      const dateStr = (project && project.deadline) || i.due;
+      if(!dateStr) return;
+      const y = dateStr.slice(0,4);
+      if(!yearMap[y]) yearMap[y] = { count:0, value:0 };
+      yearMap[y].count++;
+      yearMap[y].value += Number(i.amount)||0;
+    });
+  }else{
+    if(subtextEl) subtextEl.textContent = 'Počet zabookovaných zákaziek podľa roku termínu (bez ohľadu na to, či už majú vyplnenú cenu) — vrátane archivovaných rokov.';
+    projects.forEach(p=>{
+      if(!p.deadline) return;
+      const y = p.deadline.slice(0,4);
+      if(!yearMap[y]) yearMap[y] = { count:0, value:0 };
+      yearMap[y].count++;
+      yearMap[y].value += Number(p.budget)||0;
+    });
+  }
   const years = Object.keys(yearMap).sort();
+  const chartLabel = yearsOverviewMode==='paid' ? 'Vyplatené (€)' : 'Počet zákaziek';
+  const chartData = years.map(y=> yearsOverviewMode==='paid' ? yearMap[y].value : yearMap[y].count);
 
   if(chartRevenueByYear) chartRevenueByYear.destroy();
   const yearCanvas = document.getElementById('chartRevenueByYear');
   if(yearCanvas){
     chartRevenueByYear = new Chart(yearCanvas, {
       type:'bar',
-      data:{ labels: years, datasets:[{ label:'Obrat (€)', data: years.map(y=>yearMap[y].revenue), backgroundColor: accent, borderRadius:4 }]},
-      options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor} }, x:{ grid:{display:false} } } }
+      data:{ labels: years, datasets:[{ label: chartLabel, data: chartData, backgroundColor: accent, borderRadius:4 }]},
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:gridColor}, ticks:{ precision: yearsOverviewMode==='paid'?undefined:0 } }, x:{ grid:{display:false} } } }
     });
   }
   const tableEl = document.getElementById('yearsOverviewTable');
   if(tableEl){
-    tableEl.innerHTML = years.length ? `<table><thead><tr><th>Rok</th><th>Zákaziek</th><th>Obrat</th></tr></thead><tbody>
-      ${years.map(y=>`<tr><td>${y}</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].revenue)}</td></tr>`).join('')}
-    </tbody></table>` : '<div class="empty">Zatiaľ žiadne zákazky s termínom.</div>';
+    if(!years.length){
+      tableEl.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>';
+    }else if(yearsOverviewMode==='paid'){
+      tableEl.innerHTML = `<table><thead><tr><th>Rok</th><th>Uhradené faktúry</th><th>Vyplatené</th></tr></thead><tbody>
+        ${years.map(y=>`<tr><td>${y}</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
+      </tbody></table>`;
+    }else{
+      tableEl.innerHTML = `<table><thead><tr><th>Rok</th><th>Zákaziek</th><th>Rozpočet spolu</th></tr></thead><tbody>
+        ${years.map(y=>`<tr><td>${y}</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
+      </tbody></table>`;
+    }
   }
 
   const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
