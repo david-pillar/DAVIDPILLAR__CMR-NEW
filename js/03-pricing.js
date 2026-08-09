@@ -232,6 +232,9 @@ async function savePricingBase(){
 
 var chartRevenueMonth, chartRevenueBalik, chartRevenueType;
 function renderPricingCharts(){
+  // Tabuľka/dáta v "Ako mi idu roky" a sezónnosti nepotrebujú Chart.js, preto bežia
+  // vždy — aj keby sa knižnica na grafy z nejakého dôvodu nenačítala (pomalé pripojenie a pod.).
+  renderYearsAndSeasonCharts();
   if(typeof Chart === 'undefined') return;
   const projects = DATA.projects;
 
@@ -292,8 +295,6 @@ function renderPricingCharts(){
     data:{ labels: Object.keys(typeMap).map(k=>typeLabels[k]||k), datasets:[{ label:'Tržby (€)', data: Object.values(typeMap), backgroundColor:'#6fa3d8', borderRadius:4 }]},
     options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, grid:{color:gridColor} }, y:{ grid:{display:false} } } }
   });
-
-  renderYearsAndSeasonCharts();
 }
 /* ---- "Ako mi idu roky" — prepínateľné medzi "Zabookované" (počet zákaziek podľa roku termínu,
    funguje aj keď ešte nemáš vyplnené ceny) a "Vyplatené" (reálne prijaté peniaze z uhradených
@@ -307,7 +308,6 @@ function setYearsOverviewMode(mode, btnEl){
   renderYearsAndSeasonCharts();
 }
 function renderYearsAndSeasonCharts(){
-  if(typeof Chart === 'undefined') return;
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e85002';
   const gridColor = 'rgba(255,255,255,0.06)';
   const projects = DATA.projects;
@@ -341,7 +341,7 @@ function renderYearsAndSeasonCharts(){
 
   if(chartRevenueByYear) chartRevenueByYear.destroy();
   const yearCanvas = document.getElementById('chartRevenueByYear');
-  if(yearCanvas){
+  if(yearCanvas && typeof Chart !== 'undefined'){
     chartRevenueByYear = new Chart(yearCanvas, {
       type:'bar',
       data:{ labels: years, datasets:[{ label: chartLabel, data: chartData, backgroundColor: accent, borderRadius:4 }]},
@@ -372,7 +372,7 @@ function renderYearsAndSeasonCharts(){
   });
   if(chartBookingsBySeason) chartBookingsBySeason.destroy();
   const seasonCanvas = document.getElementById('chartBookingsBySeason');
-  if(seasonCanvas){
+  if(seasonCanvas && typeof Chart !== 'undefined'){
     chartBookingsBySeason = new Chart(seasonCanvas, {
       type:'bar',
       data:{ labels: monthNames, datasets:[{ label:'Počet zákaziek', data: monthCounts, backgroundColor:'#6fa3d8', borderRadius:4 }]},
