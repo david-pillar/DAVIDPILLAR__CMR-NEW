@@ -436,11 +436,104 @@ function renderPricingForecast(){
     goalHtml = `
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-          <span>🎯 Ročný cieľ (${year}): <b style="color:var(--text);">${fmtMoney(goal)}</b></span>
+          <span>🎯 Ročný cieľ obratu (${year}): <b style="color:var(--text);">${fmtMoney(goal)}</b></span>
           <span class="row-sub" style="${onTrack?'color:var(--green-page);':'color:#f0827f;'}">${onTrack ? (isPastYear?'Cieľ splnený 🎉':'Podľa odhadu cieľ splníš 🎉') : (isPastYear?'Cieľ nebol splnený':'Podľa doterajšieho tempa cieľ zatiaľ nesplníš')}</span>
         </div>
         <div class="hbar-track" style="margin-bottom:6px;"><div class="hbar-fill" data-pct="${pctPaid}" style="width:0%;"></div></div>
         <div class="row-sub">Vyplatené: ${pctPaid}% cieľa ${isPastYear?'':'· Odhad na konci roka: '+pctEstimate+'% cieľa'}</div>
+      </div>`;
+  }
+
+  // Zisk = príjmy − náklady za daný rok. Pre budúci rok (zatiaľ žiadne náklady) sa použije
+  // priemer nákladov z predošlých rokov ako opatrný odhad; pre uzavretý rok ide o skutočné číslo.
+  const yearExpenses = DATA.expenses.filter(e=>e.date && e.date.startsWith(String(year))).reduce((s,e)=>s+Number(e.amount||0),0);
+  let projectedExpenses = yearExpenses;
+  if(isFutureYear){
+    const pastExpensesByYear = {};
+    DATA.expenses.forEach(e=>{
+      if(!e.date) return;
+      const y = e.date.slice(0,4);
+      if(Number(y) >= year) return;
+      pastExpensesByYear[y] = (pastExpensesByYear[y]||0) + Number(e.amount||0);
+    });
+    const pastYearsList = Object.keys(pastExpensesByYear);
+    projectedExpenses = pastYearsList.length ? pastYearsList.reduce((s,y)=>s+pastExpensesByYear[y],0)/pastYearsList.length : 0;
+  }else if(!isPastYear && daysElapsed>0){
+    projectedExpenses = yearExpenses / daysElapsed * daysInYear;
+  }
+  const profitToDate = paidToDate - yearExpenses;
+  const profitEstimate = isPastYear ? profitToDate : (estimate - projectedExpenses);
+
+  const profitGoal = DATA.settings.yearlyProfitGoals && DATA.settings.yearlyProfitGoals[year];
+  const goalInputEl = document.getElementById('pf-profit-goal-input');
+  if(goalInputEl && document.activeElement !== goalInputEl) goalInputEl.value = profitGoal || '';
+  let profitGoalHtml = '';
+  let laggingHtml = '';
+  if(profitGoal){
+    const pctProfitToDate = Math.min(100, Math.max(0, Math.round(profitToDate/profitGoal*100)));
+    const pctProfitEstimate = Math.round(profitEstimate/profitGoal*100);
+    const onTrackProfit = profitEstimate >= profitGoal;
+
+    // Mesačný rozpis cesty k cieľu — koľko zisku treba ešte zarobiť za mesiac, aby sa cieľ splnil.
+    let monthlyPaceHtml = '';
+    if(!isPastYear){
+      const remainingNeeded = profitGoal - profitToDate;
+      const monthsElapsed = isFutureYear ? 0 : now.getMonth() + 1;
+      const monthsRemaining = Math.max(1, 12 - monthsElapsed);
+      if(remainingNeeded > 0){
+        const perMonth = remainingNeeded / monthsRemaining;
+        monthlyPaceHtml = `<div class="row-sub" style="margin-top:4px;">Aby si cieľ splnil, potrebuješ ešte ~<b style="color:var(--text);">${fmtMoney(perMonth)}</b>/mesiac zisku počas zvyšných ${monthsRemaining} mesiacov.</div>`;
+      }else{
+        monthlyPaceHtml = `<div class="row-sub" style="margin-top:4px;color:var(--green-page);">Cieľ zisku je už dosiahnutý — zvyšok roka je bonus. 🎉</div>`;
+      }
+    }
+
+    profitGoalHtml = `
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+          <span>💰 Ročný cieľ zisku (${year}): <b style="color:var(--text);">${fmtMoney(profitGoal)}</b></span>
+          <span class="row-sub" style="${onTrackProfit?'color:var(--green-page);':'color:var(--danger);'}">${onTrackProfit ? (isPastYear?'Cieľ zisku splnený 🎉':'Podľa odhadu cieľ zisku splníš 🎉') : (isPastYear?'Cieľ zisku nebol splnený':'Podľa doterajšieho tempa cieľ zisku zatiaľ nesplníš')}</span>
+        </div>
+        <div class="hbar-track" style="margin-bottom:6px;"><div class="hbar-fill" data-pct="${pctProfitToDate}" style="width:0%;"></div></div>
+        <div class="row-sub">Zisk doteraz: ${fmtMoney(profitToDate)} (${pctProfitToDate}% cieľa) ${isPastYear?'':'· Odhad zisku na konci roka: '+fmtMoney(profitEstimate)+' ('+pctProfitEstimate+'% cieľa)'}</div>
+        ${monthlyPaceHtml}
+      </div>`;
+
+    // Upozornenie keď zaostávaš — porovná, koľko % cieľa máš splnené oproti tomu, koľko % roka
+    // už prešlo. Zobrazí sa len počas prebiehajúceho roka a až po prvých ~6 týždňoch, aby to
+    // na začiatku roka zbytočne nestrašilo pri prirodzene nízkych číslach.
+    if(!isFutureYear && !isPastYear && pctYearElapsed >= 15){
+      const behindBy = pctYearElapsed - pctProfitToDate;
+      if(behindBy >= 15){
+        laggingHtml = `<div style="margin-top:12px;padding:12px 14px;background:rgba(224,82,79,.1);border:1px solid rgba(224,82,79,.35);border-radius:10px;font-size:13px;color:var(--text);">
+          🐢 <b>Zaostávaš za cieľom zisku:</b> rok je z ${pctYearElapsed}% za sebou, ale cieľ máš splnený len z ${pctProfitToDate}%.
+        </div>`;
+      }
+    }
+  }
+
+  // Náklady podľa kategórie za daný rok
+  const expensesByCategory = {};
+  DATA.expenses.forEach(e=>{
+    if(!e.date || !e.date.startsWith(String(year))) return;
+    const c = e.category || 'ine';
+    expensesByCategory[c] = (expensesByCategory[c]||0) + Number(e.amount||0);
+  });
+  const expenseCatKeys = Object.keys(expensesByCategory).sort((a,b)=>expensesByCategory[b]-expensesByCategory[a]);
+  let expensesHtml = '';
+  if(expenseCatKeys.length){
+    expensesHtml = `
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
+        <p class="row-sub" style="margin-bottom:8px;">🧾 Náklady podľa kategórie (${year}) — spolu ${fmtMoney(yearExpenses)}</p>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+        ${expenseCatKeys.map(c=>{
+          const pct = yearExpenses>0 ? Math.round(expensesByCategory[c]/yearExpenses*100) : 0;
+          return `<div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span>${escapeHtml((typeof EXPENSE_CATEGORY_LABELS!=='undefined' && EXPENSE_CATEGORY_LABELS[c]) || c)}</span>
+            <span class="row-sub">${fmtMoney(expensesByCategory[c])} (${pct}%)</span>
+          </div>`;
+        }).join('')}
+        </div>
       </div>`;
   }
 
@@ -449,14 +542,30 @@ function renderPricingForecast(){
       <div class="stat-card"><div class="stat-num">${fmtMoney(paidToDate)}</div><div class="stat-label">Vyplatené (${year})</div></div>
       <div class="stat-card"><div class="stat-num">${fmtMoney(bookedThisYear)}</div><div class="stat-label">Zabookovaná hodnota za ${year}</div></div>
       <div class="stat-card"><div class="stat-num" style="color:var(--accent);">${fmtMoney(estimate)}</div><div class="stat-label">${estimateLabel}</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:${profitEstimate>=0?'var(--green-page)':'var(--danger)'};">${fmtMoney(profitEstimate)}</div><div class="stat-label">${isPastYear?'Skutočný zisk za rok':'Odhadovaný zisk (príjmy − náklady)'}</div></div>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
       <span>${paceCaption}</span>
     </div>
     <div class="hbar-track"><div class="hbar-fill" data-pct="${pctYearElapsed}" style="width:0%;"></div></div>
     ${goalHtml}
+    ${profitGoalHtml}
+    ${laggingHtml}
+    ${expensesHtml}
   `;
   animateFillIn(el, '.hbar-fill', 'width');
+}
+function savePricingProfitGoal(){
+  const inputEl = document.getElementById('pf-profit-goal-input');
+  if(!inputEl) return;
+  const year = pricingSelectedYear || String(new Date().getFullYear());
+  const val = Number(inputEl.value) || 0;
+  if(!DATA.settings.yearlyProfitGoals) DATA.settings.yearlyProfitGoals = {};
+  if(val > 0) DATA.settings.yearlyProfitGoals[year] = val;
+  else delete DATA.settings.yearlyProfitGoals[year];
+  saveKey('settings', DATA.settings);
+  showToast(val > 0 ? `Cieľ zisku pre rok ${year} uložený` : `Cieľ zisku pre rok ${year} zrušený`);
+  renderPricingForecast();
 }
 function renderAvgPriceBreakdown(){
   const typeEl = document.getElementById('avgPriceByType');
