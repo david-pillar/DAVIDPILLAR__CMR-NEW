@@ -283,6 +283,108 @@ function scrollToPricingPanel(e, panelId){
   if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
 }
 
+/* ---- Globálny výber roka pre celú stránku Cenotvorby — "" znamená "Všetky roky".
+   Ovplyvňuje prognózu, priemerné ceny, sezónnosť a grafy nižšie; panel "Ako mi idu roky"
+   ostáva vždy celkový prehľad všetkých rokov, vybraný rok sa v ňom len zvýrazní. ---- */
+var pricingSelectedYear = localStorage.getItem('slate:pricingSelectedYear') || '';
+function setPricingYear(year){
+  pricingSelectedYear = year || '';
+  if(pricingSelectedYear) localStorage.setItem('slate:pricingSelectedYear', pricingSelectedYear);
+  else localStorage.removeItem('slate:pricingSelectedYear');
+  renderPricingCharts();
+}
+function renderPricingYearTileBar(){
+  const el = document.getElementById('pricingYearTileBar');
+  if(!el) return;
+  const years = new Set();
+  DATA.projects.forEach(p=>{ if(p.deadline) years.add(p.deadline.slice(0,4)); });
+  const curYear = new Date().getFullYear();
+  const maxYear = getYearTileMaxYear();
+  for(let y=curYear; y<=maxYear; y++) years.add(String(y));
+  const sortedYears = Array.from(years).sort();
+  const countFor = y => DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(y)).length;
+  const allActive = !pricingSelectedYear;
+  el.innerHTML = `
+    <div class="year-tile ${allActive?'active':''}" onclick="setPricingYear('')">
+      <div class="year-tile-num">Všetky</div>
+      <div class="year-tile-count">${DATA.projects.length} zákaziek</div>
+    </div>
+    ${sortedYears.map(y=>`
+      <div class="year-tile ${pricingSelectedYear===y?'active':''}" onclick="setPricingYear('${y}')">
+        <div class="year-tile-num">${y}</div>
+        <div class="year-tile-count">${countFor(y)} zákaziek</div>
+      </div>`).join('')}
+    <div class="year-tile year-tile-add" onclick="extendYearTiles(); renderPricingYearTileBar();" title="Pridať ďalší rok dopredu">
+      <div class="year-tile-num">+</div>
+      <div class="year-tile-count">rok</div>
+    </div>
+  `;
+}
+/* ---- Kapacitné upozornenie — porovná vybraný/aktuálny rok s typickým predošlým rokom
+   a upozorní, ak je vyťaženie výrazne nad normál (celoročne alebo v konkrétnom mesiaci). ---- */
+function renderCapacityWarning(){
+  const el = document.getElementById('capacityWarning');
+  if(!el) return;
+  const targetYear = pricingSelectedYear || String(new Date().getFullYear());
+
+  const countsByYear = {};
+  DATA.projects.forEach(p=>{
+    if(!p.deadline) return;
+    const y = p.deadline.slice(0,4);
+    countsByYear[y] = (countsByYear[y]||0) + 1;
+  });
+  const otherYears = Object.keys(countsByYear).filter(y=>y!==targetYear);
+  const targetCount = countsByYear[targetYear] || 0;
+
+  if(!otherYears.length || targetCount === 0){ el.innerHTML = ''; return; }
+  const avgOtherYears = otherYears.reduce((s,y)=>s+countsByYear[y],0) / otherYears.length;
+  const maxOtherYear = Math.max(...otherYears.map(y=>countsByYear[y]));
+
+  // Najvyťaženejší mesiac v cieľovom roku vs. historický rekord toho istého mesiaca (iné roky)
+  const monthCountsTarget = new Array(12).fill(0);
+  const monthCountsOtherMax = new Array(12).fill(0);
+  DATA.projects.forEach(p=>{
+    if(!p.deadline) return;
+    const y = p.deadline.slice(0,4);
+    const m = Number(p.deadline.slice(5,7)) - 1;
+    if(m<0 || m>11) return;
+    if(y === targetYear) monthCountsTarget[m]++;
+  });
+  otherYears.forEach(y=>{
+    const perMonth = new Array(12).fill(0);
+    DATA.projects.forEach(p=>{
+      if(!p.deadline || !p.deadline.startsWith(y)) return;
+      const m = Number(p.deadline.slice(5,7)) - 1;
+      if(m>=0 && m<12) perMonth[m]++;
+    });
+    perMonth.forEach((c,i)=>{ if(c > monthCountsOtherMax[i]) monthCountsOtherMax[i] = c; });
+  });
+  const monthNames = ['január','február','marec','apríl','máj','jún','júl','august','september','október','november','december'];
+  let hottestMonthIdx = -1;
+  for(let i=0;i<12;i++){
+    if(monthCountsTarget[i] > 0 && monthCountsTarget[i] >= monthCountsOtherMax[i] && monthCountsOtherMax[i] > 0){
+      if(hottestMonthIdx===-1 || monthCountsTarget[i] > monthCountsTarget[hottestMonthIdx]) hottestMonthIdx = i;
+    }
+  }
+
+  const msgs = [];
+  if(targetCount > avgOtherYears * 1.15){
+    const pctOver = Math.round((targetCount/avgOtherYears - 1) * 100);
+    msgs.push(`Rok ${targetYear} má už <b>${targetCount}</b> zákaziek — o ${pctOver}% viac než tvoj typický rok (priemer ${Math.round(avgOtherYears)}). Zváž, či zvládneš tempo, prípadne zvýš ceny.`);
+  }
+  if(targetCount >= maxOtherYear && targetCount > 0 && maxOtherYear > 0){
+    msgs.push(`Rok ${targetYear} sa blíži k tvojmu doteraz najvyťaženejšiemu roku (${maxOtherYear} zákaziek) alebo ho už prekonáva.`);
+  }
+  if(hottestMonthIdx >= 0){
+    msgs.push(`${monthNames[hottestMonthIdx].charAt(0).toUpperCase()+monthNames[hottestMonthIdx].slice(1)} ${targetYear} má ${monthCountsTarget[hottestMonthIdx]} zákaziek — vyrovnáva alebo prekonáva tvoj doterajší rekord pre tento mesiac.`);
+  }
+
+  if(!msgs.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="margin-top:14px;padding:12px 14px;background:rgba(224,82,79,.1);border:1px solid rgba(224,82,79,.35);border-radius:10px;font-size:13px;color:var(--text);">
+    ⚠️ <b>Kapacitné upozornenie:</b> ${msgs.join(' ')}
+  </div>`;
+}
+
 function median(arr){
   if(!arr.length) return 0;
   const s = arr.slice().sort((a,b)=>a-b);
@@ -292,12 +394,21 @@ function median(arr){
 function renderPricingForecast(){
   const el = document.getElementById('pricingForecast');
   if(!el) return;
-  const year = new Date().getFullYear();
+  const realCurrentYear = new Date().getFullYear();
+  const year = pricingSelectedYear ? Number(pricingSelectedYear) : realCurrentYear;
+  const isFutureYear = year > realCurrentYear;
+  const isPastYear = year < realCurrentYear;
   const now = new Date();
-  const startOfYear = new Date(year,0,1);
-  const daysElapsed = Math.max(1, Math.floor((now-startOfYear)/86400000)+1);
   const isLeap = (year%4===0 && year%100!==0) || year%400===0;
   const daysInYear = isLeap ? 366 : 365;
+  let daysElapsed, pctYearElapsed;
+  if(isFutureYear){ daysElapsed = 0; pctYearElapsed = 0; }
+  else if(isPastYear){ daysElapsed = daysInYear; pctYearElapsed = 100; }
+  else{
+    const startOfYear = new Date(year,0,1);
+    daysElapsed = Math.max(1, Math.floor((now-startOfYear)/86400000)+1);
+    pctYearElapsed = Math.min(100, Math.round(daysElapsed/daysInYear*100));
+  }
 
   const paidToDate = DATA.invoices.filter(i=>{
     if(i.status !== 'uhradena') return false;
@@ -309,9 +420,12 @@ function renderPricingForecast(){
   const bookedThisYear = DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(String(year)))
     .reduce((s,p)=>s+Number(p.budget||0),0);
 
-  const runRate = paidToDate / daysElapsed * daysInYear;
-  const estimate = Math.max(runRate, bookedThisYear);
-  const pctYearElapsed = Math.min(100, Math.round(daysElapsed/daysInYear*100));
+  const runRate = daysElapsed>0 ? paidToDate / daysElapsed * daysInYear : 0;
+  const estimate = isPastYear ? paidToDate : Math.max(runRate, bookedThisYear);
+  const estimateLabel = isPastYear ? 'Skutočný príjem za rok' : (isFutureYear ? 'Odhad na základe zabookovaného' : 'Odhad celoročného príjmu');
+  const paceCaption = isPastYear
+    ? `Rok ${year} je uzavretý`
+    : (isFutureYear ? `Rok ${year} ešte nezačal — zatiaľ len zabookované zákazky` : `Prešlo ${pctYearElapsed}% roka ${year} · Tempo podľa platieb: ${fmtMoney(runRate)}/rok`);
 
   const goal = DATA.settings.yearlyGoals && DATA.settings.yearlyGoals[year];
   let goalHtml = '';
@@ -322,23 +436,22 @@ function renderPricingForecast(){
     goalHtml = `
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-          <span>🎯 Ročný cieľ: <b style="color:var(--text);">${fmtMoney(goal)}</b></span>
-          <span class="row-sub" style="${onTrack?'color:var(--green-page);':'color:#f0827f;'}">${onTrack ? 'Podľa odhadu cieľ splníš 🎉' : 'Podľa doterajšieho tempa cieľ zatiaľ nesplníš'}</span>
+          <span>🎯 Ročný cieľ (${year}): <b style="color:var(--text);">${fmtMoney(goal)}</b></span>
+          <span class="row-sub" style="${onTrack?'color:var(--green-page);':'color:#f0827f;'}">${onTrack ? (isPastYear?'Cieľ splnený 🎉':'Podľa odhadu cieľ splníš 🎉') : (isPastYear?'Cieľ nebol splnený':'Podľa doterajšieho tempa cieľ zatiaľ nesplníš')}</span>
         </div>
         <div class="hbar-track" style="margin-bottom:6px;"><div class="hbar-fill" data-pct="${pctPaid}" style="width:0%;"></div></div>
-        <div class="row-sub">Vyplatené doteraz: ${pctPaid}% cieľa · Odhad na konci roka: ${pctEstimate}% cieľa</div>
+        <div class="row-sub">Vyplatené: ${pctPaid}% cieľa ${isPastYear?'':'· Odhad na konci roka: '+pctEstimate+'% cieľa'}</div>
       </div>`;
   }
 
   el.innerHTML = `
     <div class="grid-stats" style="margin-bottom:14px;">
-      <div class="stat-card"><div class="stat-num">${fmtMoney(paidToDate)}</div><div class="stat-label">Vyplatené doteraz (${year})</div></div>
+      <div class="stat-card"><div class="stat-num">${fmtMoney(paidToDate)}</div><div class="stat-label">Vyplatené (${year})</div></div>
       <div class="stat-card"><div class="stat-num">${fmtMoney(bookedThisYear)}</div><div class="stat-label">Zabookovaná hodnota za ${year}</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:var(--accent);">${fmtMoney(estimate)}</div><div class="stat-label">Odhad celoročného príjmu</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--accent);">${fmtMoney(estimate)}</div><div class="stat-label">${estimateLabel}</div></div>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-      <span>Prešlo ${pctYearElapsed}% roka ${year}</span>
-      <span class="row-sub">Tempo podľa doterajších platieb: ${fmtMoney(runRate)}/rok</span>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+      <span>${paceCaption}</span>
     </div>
     <div class="hbar-track"><div class="hbar-fill" data-pct="${pctYearElapsed}" style="width:0%;"></div></div>
     ${goalHtml}
@@ -351,8 +464,14 @@ function renderAvgPriceBreakdown(){
   if(!typeEl || !balikEl) return;
   const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip', ine:'Iné' };
 
+  // Priemer/medián rešpektuje vybraný rok (ak je nastavený) — trend nižšie potrebuje
+  // dáta naprieč VŠETKÝMI rokmi, preto sa počíta z DATA.projects bez tohto filtra.
+  const yearFilteredProjects = pricingSelectedYear
+    ? DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(pricingSelectedYear))
+    : DATA.projects;
+
   const byType = {};
-  DATA.projects.forEach(p=>{
+  yearFilteredProjects.forEach(p=>{
     if(!p.budget) return;
     const t = p.type || 'ine';
     if(!byType[t]) byType[t] = [];
@@ -368,18 +487,20 @@ function renderAvgPriceBreakdown(){
   </tbody></table>` : '<div class="empty">Zatiaľ žiadne dáta.</div>';
 
   const byBalik = {};
-  const byBalikByYear = {}; // balikId -> { year: [budgets] }
-  DATA.projects.forEach(p=>{
+  yearFilteredProjects.forEach(p=>{
     const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
     if(!b || !p.budget) return;
     if(!byBalik[b]) byBalik[b] = [];
     byBalik[b].push(Number(p.budget));
-    if(p.deadline){
-      const y = p.deadline.slice(0,4);
-      if(!byBalikByYear[b]) byBalikByYear[b] = {};
-      if(!byBalikByYear[b][y]) byBalikByYear[b][y] = [];
-      byBalikByYear[b][y].push(Number(p.budget));
-    }
+  });
+  const byBalikByYear = {}; // balikId -> { year: [budgets] } — vždy naprieč všetkými rokmi (pre trend)
+  DATA.projects.forEach(p=>{
+    const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
+    if(!b || !p.budget || !p.deadline) return;
+    const y = p.deadline.slice(0,4);
+    if(!byBalikByYear[b]) byBalikByYear[b] = {};
+    if(!byBalikByYear[b][y]) byBalikByYear[b][y] = [];
+    byBalikByYear[b][y].push(Number(p.budget));
   });
   const balikRows = Object.keys(byBalik).map(b=>{
     const vals = byBalik[b];
@@ -412,7 +533,7 @@ function renderAvgPriceBreakdown(){
     if(!trendRows.length){
       trendEl.innerHTML = '';
     }else{
-      trendEl.innerHTML = `<p class="row-sub" style="margin-bottom:8px;">📈 Trend cien podľa rokov — odporúčaná cena na ${trendRows[0].nextYear} pri zachovaní doterajšieho tempa rastu:</p>
+      trendEl.innerHTML = `<p class="row-sub" style="margin-bottom:8px;">📈 Trend cien naprieč všetkými rokmi (nezávisle od výberu vyššie) — odporúčaná cena na ${trendRows[0].nextYear} pri zachovaní doterajšieho tempa rastu:</p>
         <div style="display:flex;flex-direction:column;gap:6px;">
         ${trendRows.map(r=>{
           const pct = Math.round(r.perYearGrowth*100);
@@ -428,10 +549,14 @@ function renderAvgPriceBreakdown(){
   }
 }
 function renderPricingCharts(){
+  renderPricingYearTileBar();
   renderYearsAndSeasonCharts();
   renderPricingForecast();
   renderAvgPriceBreakdown();
-  const projects = DATA.projects;
+  renderCapacityWarning();
+  const projects = pricingSelectedYear
+    ? DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(pricingSelectedYear))
+    : DATA.projects;
 
   // Revenue by month (based on deadline)
   const monthMap = {};
@@ -508,11 +633,13 @@ function renderYearsAndSeasonCharts(){
   const years = Object.keys(yearMap).sort();
   const yearValues = years.map(y=> yearsOverviewMode==='paid' ? yearMap[y].value : yearMap[y].count);
   const yearFmt = yearsOverviewMode==='paid' ? (v=>fmtMoney(v)) : (v=>String(v));
-  const curYearStr = String(new Date().getFullYear());
+  // Zvýrazní vybraný rok z prepínača navrchu stránky; keď nič nie je vybrané ("Všetky"),
+  // zvýrazní aspoň aktuálny kalendárny rok, aby bol prehľad vždy zorientovaný.
+  const highlightYearStr = pricingSelectedYear || String(new Date().getFullYear());
   renderMiniBarChart('yearsBarChart', years, yearValues, {
     fmt: yearFmt,
     onClick: goToProjectsYear,
-    colClass: (label)=> label===curYearStr ? 'mini-bar-current' : ''
+    colClass: (label)=> label===highlightYearStr ? 'mini-bar-current' : ''
   });
 
   // Porovnanie rok/rok — "k dnešnému dňu" (rovnaký deň v roku), aby bolo porovnanie férové
@@ -575,7 +702,16 @@ function renderYearsAndSeasonCharts(){
 
   const monthNames = ['Jan','Feb','Mar','Apr','Máj','Jún','Júl','Aug','Sep','Okt','Nov','Dec'];
   const monthCounts = new Array(12).fill(0);
-  projects.forEach(p=>{
+  const seasonProjects = pricingSelectedYear
+    ? projects.filter(p=>p.deadline && p.deadline.startsWith(pricingSelectedYear))
+    : projects;
+  const seasonSubtextEl = document.getElementById('seasonSubtext');
+  if(seasonSubtextEl){
+    seasonSubtextEl.textContent = pricingSelectedYear
+      ? `Počet zákaziek podľa mesiaca len za rok ${pricingSelectedYear} — pomôže naplánovať, kedy čakať nával a kedy pokoj.`
+      : 'Počet zákaziek podľa mesiaca v roku, spočítané naprieč všetkými rokmi — pomôže naplánovať, kedy čakať nával a kedy pokoj.';
+  }
+  seasonProjects.forEach(p=>{
     if(!p.deadline) return;
     const m = Number(p.deadline.slice(5,7)) - 1;
     if(m>=0 && m<12) monthCounts[m]++;

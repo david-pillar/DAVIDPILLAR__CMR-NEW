@@ -466,6 +466,13 @@
         <button class="btn ghost small" style="margin-top:12px;" onclick="addPriplatokRow()">+ Pridať príplatok</button>
       </div>
 
+      <div class="panel" style="margin-top:20px;">
+        <h3>📊 Prehľady a analytika — za ktorý rok?</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Vyber rok a prognóza, priemerné ceny, sezónnosť aj grafy nižšie sa prepočítajú len naň. "Ako mi idu roky" ostáva celkový prehľad, vybraný rok sa v ňom len zvýrazní.</p>
+        <div class="year-tile-bar" id="pricingYearTileBar"></div>
+        <div id="capacityWarning"></div>
+      </div>
+
       <div class="quick-nav-chips">
         <a href="#pnl-years" onclick="scrollToPricingPanel(event,'pnl-years')">📅 Roky</a>
         <a href="#pnl-forecast" onclick="scrollToPricingPanel(event,'pnl-forecast')">🔮 Prognóza</a>
@@ -512,7 +519,7 @@
 
       <div class="panel" style="margin-top:20px;" id="pnl-season">
         <h3>🌸 Sezónnosť — v ktorých mesiacoch prichádza najviac zákaziek</h3>
-        <p class="row-sub" style="margin-bottom:12px;">Počet zákaziek podľa mesiaca v roku, spočítané naprieč všetkými rokmi — pomôže naplánovať, kedy čakať nával a kedy pokoj.</p>
+        <p class="row-sub" style="margin-bottom:12px;" id="seasonSubtext"></p>
         <div class="mini-barchart" id="seasonBarChart"></div>
         <p class="row-sub" style="margin-top:12px;" id="seasonInsight"></p>
       </div>
