@@ -40,6 +40,52 @@ function calShift(delta){
   calCursor.setMonth(calCursor.getMonth()+delta);
   renderCalendar();
 }
+/* ---- Prepínač Mriežka / Zoznam — zoznamový pohľad ukáže všetky nadchádzajúce
+   rezervácie chronologicky, bez potreby preklikávať sa mesiac po mesiaci. ---- */
+var calViewMode = 'grid';
+function setCalViewMode(mode, btnEl){
+  calViewMode = mode;
+  document.querySelectorAll('.cal-view-btn').forEach(b=>b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+  document.getElementById('calGridView').style.display = mode==='grid' ? 'block' : 'none';
+  document.getElementById('calListView').style.display = mode==='list' ? 'block' : 'none';
+  document.getElementById('calDayAgendaPanel').style.display = mode==='grid' ? 'block' : 'none';
+  if(mode==='list') renderCalListView();
+}
+function renderCalListView(){
+  const el = document.getElementById('calListContent');
+  if(!el) return;
+  const todayStr = toLocalISODate(new Date());
+  const items = getFilteredBookings()
+    .filter(b=>b.date >= todayStr)
+    .sort((a,b)=> (a.date+((a.time)||'')).localeCompare(b.date+((b.time)||'')));
+  if(!items.length){ el.innerHTML = '<div class="empty">Žiadne nadchádzajúce rezervácie (podľa aktívnych filtrov).</div>'; return; }
+
+  const monthNamesFull = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+  let html = '';
+  let lastMonthKey = '';
+  items.forEach(b=>{
+    const monthKey = b.date.slice(0,7);
+    if(monthKey !== lastMonthKey){
+      lastMonthKey = monthKey;
+      const [y,m] = monthKey.split('-');
+      html += `<div class="row-sub" style="margin:${html?'18px':'0'} 0 8px;font-weight:700;color:var(--text);text-transform:none;letter-spacing:0;">${monthNamesFull[Number(m)-1]} ${y}</div>`;
+    }
+    const client = DATA.clients.find(c=>c.id===b.clientId);
+    const type = bookingChipType(b);
+    const tagsHtml = (b.tags||[]).map(t=>`<span class="tag-pill">${escapeHtml(t)}</span>`).join(' ');
+    const isToday = b.date === todayStr;
+    html += `<div class="list-row" onclick="openBookingModal('${b.id}')" style="cursor:pointer;${isToday?'border-color:var(--accent);':''}">
+      <div class="row-main">
+        <div class="row-title">${CHIP_ICON[type]} ${fmtDate(b.date)}${b.time?' · '+b.time:''} — ${escapeHtml(b.title||'Bez názvu')}</div>
+        <div class="row-sub">${client?escapeHtml(client.name):'—'}${b.location?' · '+escapeHtml(b.location):''}</div>
+        ${tagsHtml?`<div style="margin-top:4px;">${tagsHtml}</div>`:''}
+      </div>
+      <span class="pill status-${b.status}">${STATUS_LABELS[b.status]||b.status}</span>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
 function goToToday(){
   calCursor = new Date();
   selectedDay = toLocalISODate(new Date());
@@ -106,6 +152,7 @@ function renderCalendar(){
     </div>`;
   }
   document.getElementById('calGrid').innerHTML = html;
+  renderCalListView();
 }
 function onChipDragStart(ev, bookingId){
   ev.dataTransfer.setData('text/plain', bookingId);

@@ -251,26 +251,36 @@
       </div>
 
       <div class="panel">
-        <div class="cal-head">
-          <div class="cal-nav"><button class="icon-btn" onclick="calShift(-1)">‹</button></div>
-          <div class="cal-month" id="calMonthLabel"></div>
-          <div class="cal-nav">
-            <button class="btn ghost small" onclick="goToToday()">Dnes</button>
-            <button class="icon-btn" onclick="calShift(1)">›</button>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button class="btn ghost small cal-view-btn active" data-mode="grid" onclick="setCalViewMode('grid', this)">🗓️ Mriežka</button>
+          <button class="btn ghost small cal-view-btn" data-mode="list" onclick="setCalViewMode('list', this)">📋 Zoznam</button>
+        </div>
+        <div id="calGridView">
+          <div class="cal-head">
+            <div class="cal-nav"><button class="icon-btn" onclick="calShift(-1)">‹</button></div>
+            <div class="cal-month" id="calMonthLabel"></div>
+            <div class="cal-nav">
+              <button class="btn ghost small" onclick="goToToday()">Dnes</button>
+              <button class="icon-btn" onclick="calShift(1)">›</button>
+            </div>
           </div>
+          <p class="row-sub" style="margin:2px 0 10px;">💡 Rezerváciu vieš presunúť na iný deň potiahnutím (drag & drop).</p>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11.5px;color:var(--text-dim);">
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#e0568a,#b8355f);display:inline-block;"></span>Svadba</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#3d8fe0,#2569b0);display:inline-block;"></span>Stužková</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#e0c828,#b89f1a);display:inline-block;"></span>Klip</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;border:1px solid var(--accent);box-shadow:0 0 6px rgba(232,80,2,.5);display:inline-block;"></span>Dnes</span>
+            <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #ff8a00;box-shadow:0 0 6px rgba(255,138,0,.5);display:inline-block;"></span>Do 3 dní</span>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
         </div>
-        <p class="row-sub" style="margin:2px 0 10px;">💡 Rezerváciu vieš presunúť na iný deň potiahnutím (drag & drop).</p>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11.5px;color:var(--text-dim);">
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#e0568a,#b8355f);display:inline-block;"></span>Svadba</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#3d8fe0,#2569b0);display:inline-block;"></span>Stužková</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:linear-gradient(135deg,#e0c828,#b89f1a);display:inline-block;"></span>Klip</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;border:1px solid var(--accent);box-shadow:0 0 6px rgba(232,80,2,.5);display:inline-block;"></span>Dnes</span>
-          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;border:1px solid #ff8a00;box-shadow:0 0 6px rgba(255,138,0,.5);display:inline-block;"></span>Do 3 dní</span>
+        <div id="calListView" style="display:none;">
+          <p class="row-sub" style="margin-bottom:12px;">Všetky nadchádzajúce rezervácie (podľa aktívnych filtrov), zoradené chronologicky — rýchly prehľad bez prepínania mesiacov.</p>
+          <div id="calListContent"></div>
         </div>
-        <div class="cal-grid" id="calGrid"></div>
       </div>
 
-      <div class="panel" style="margin-top:16px;">
+      <div class="panel" style="margin-top:16px;" id="calDayAgendaPanel">
         <h3 id="dayAgendaTitle">Vyber deň v kalendári</h3>
         <div id="dayAgendaList"></div>
       </div>
