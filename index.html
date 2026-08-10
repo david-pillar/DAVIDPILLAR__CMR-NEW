@@ -1151,6 +1151,23 @@
       </div>
       <div><label>Popis</label><input id="exp-description" placeholder="napr. Tankovanie na svadbu Fabryová"></div>
       <div><label>Súvisiaca zákazka (voliteľné)</label><select id="exp-project"><option value="">— žiadna —</option></select></div>
+      <div id="exp-recurring-wrap">
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);margin:10px 0 0;">
+          <input type="checkbox" id="exp-recurring" style="width:auto;" onchange="onExpenseRecurringToggle()"> 🔁 Opakovaný náklad (predplatné, nájom a pod.)
+        </label>
+        <div class="field-row" id="exp-recurring-fields" style="display:none;margin-top:10px;">
+          <div><label>Frekvencia</label>
+            <select id="exp-recurring-freq">
+              <option value="monthly">Mesačne</option>
+              <option value="yearly">Ročne</option>
+            </select>
+          </div>
+          <div><label>Opakovať do (dátum)</label><input type="date" id="exp-recurring-until"></div>
+        </div>
+      </div>
+      <div id="exp-recurring-cancel-wrap" style="display:none;margin-top:10px;">
+        <button class="btn ghost small" onclick="cancelFutureRecurringExpenses()">🚫 Zrušiť túto a všetky budúce opakovania</button>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn danger small" id="exp-delete" onclick="deleteExpense()">Odstrániť</button>

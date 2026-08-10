@@ -101,12 +101,35 @@ var EXPENSE_CATEGORY_LABELS = {
   benzin:'Benzín / cesta', technika:'Technika / vybavenie', asistent:'Asistent / 2. kamera',
   softver:'Softvér / predplatné', marketing:'Marketing / reklama', ine:'Iné'
 };
+function onExpenseRecurringToggle(){
+  const checked = document.getElementById('exp-recurring').checked;
+  document.getElementById('exp-recurring-fields').style.display = checked ? 'grid' : 'none';
+  if(checked && !document.getElementById('exp-recurring-until').value){
+    // rozumný predvolený dátum: koniec nasledujúceho kalendárneho roka
+    const y = new Date().getFullYear() + 1;
+    document.getElementById('exp-recurring-until').value = `${y}-12-31`;
+  }
+}
+function addMonthsToDate(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setMonth(d.getMonth()+n);
+  return toLocalISODate(d);
+}
+function addYearsToDate(dateStr, n){
+  const d = new Date(dateStr+'T00:00:00');
+  d.setFullYear(d.getFullYear()+n);
+  return toLocalISODate(d);
+}
 function openExpenseModal(id){
   const clientSelectOpts = '<option value="">— žiadna —</option>' + DATA.projects.map(p=>`<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('');
   document.getElementById('exp-project').innerHTML = clientSelectOpts;
   const editing = !!id;
   document.getElementById('expenseModalTitle').textContent = editing ? 'Upraviť náklad' : 'Nový náklad';
   document.getElementById('exp-delete').style.display = editing ? 'inline-flex' : 'none';
+  document.getElementById('exp-recurring').checked = false;
+  document.getElementById('exp-recurring-fields').style.display = 'none';
+  document.getElementById('exp-recurring-freq').value = 'monthly';
+  document.getElementById('exp-recurring-until').value = '';
   if(editing){
     const e = DATA.expenses.find(x=>x.id===id);
     document.getElementById('exp-id').value = e.id;
@@ -115,6 +138,10 @@ function openExpenseModal(id){
     document.getElementById('exp-category').value = e.category||'ine';
     document.getElementById('exp-description').value = e.description||'';
     document.getElementById('exp-project').value = e.projectId||'';
+    // Pri editácii existujúceho záznamu sa opakovanie už nenastavuje nanovo (to sa robí len
+    // pri vytváraní), namiesto toho sa ponúkne možnosť zrušiť túto a budúce opakovania.
+    document.getElementById('exp-recurring-wrap').style.display = 'none';
+    document.getElementById('exp-recurring-cancel-wrap').style.display = e.recurringGroupId ? 'block' : 'none';
   }else{
     document.getElementById('exp-id').value = '';
     document.getElementById('exp-date').value = toLocalISODate(new Date());
@@ -122,10 +149,13 @@ function openExpenseModal(id){
     document.getElementById('exp-category').value = 'benzin';
     document.getElementById('exp-description').value = '';
     document.getElementById('exp-project').value = '';
+    document.getElementById('exp-recurring-wrap').style.display = 'block';
+    document.getElementById('exp-recurring-cancel-wrap').style.display = 'none';
   }
   openModal('modal-expense');
 }
 async function saveExpense(){
+  const isNew = !document.getElementById('exp-id').value;
   const id = document.getElementById('exp-id').value || uid();
   const amount = document.getElementById('exp-amount').value;
   if(!amount || Number(amount)<=0){ showToast('Zadaj sumu nákladu'); return; }
@@ -140,13 +170,38 @@ async function saveExpense(){
   const idx = DATA.expenses.findIndex(e=>e.id===id);
   if(idx>-1){
     if(DATA.expenses[idx].archived) expense.archived = true; // uloženie úpravy nesmie tichým spôsobom vytiahnuť náklad z archívu
+    if(DATA.expenses[idx].recurringGroupId){ expense.recurringGroupId = DATA.expenses[idx].recurringGroupId; expense.recurring = DATA.expenses[idx].recurring; }
     DATA.expenses[idx]=expense;
   }else{
     DATA.expenses.push(expense);
   }
+
+  // Pri novom nákladu s označeným opakovaním sa rovno vygenerujú aj budúce výskyty
+  // (mesačne/ročne) až po zvolený dátum — max. 60 opakovaní ako bezpečná poistka.
+  let generatedCount = 0;
+  if(isNew && document.getElementById('exp-recurring').checked){
+    const freq = document.getElementById('exp-recurring-freq').value;
+    const until = document.getElementById('exp-recurring-until').value;
+    if(until && expense.date){
+      expense.recurringGroupId = id;
+      expense.recurring = freq;
+      let cursorDate = expense.date;
+      for(let i=1; i<=60; i++){
+        cursorDate = freq==='yearly' ? addYearsToDate(cursorDate,1) : addMonthsToDate(cursorDate,1);
+        if(cursorDate > until) break;
+        DATA.expenses.push({
+          id: uid(), date: cursorDate, amount: expense.amount, category: expense.category,
+          description: expense.description, projectId: expense.projectId,
+          recurringGroupId: id, recurring: freq
+        });
+        generatedCount++;
+      }
+    }
+  }
+
   await saveKey('expenses', DATA.expenses);
   closeModal('modal-expense'); renderAll(); if(document.getElementById('view-expenses').classList.contains('active')) renderExpenses();
-  showToast('Náklad uložený');
+  showToast(generatedCount>0 ? `Náklad uložený + vytvorených ${generatedCount} opakovaní` : 'Náklad uložený');
 }
 async function deleteExpense(){
   const id = document.getElementById('exp-id').value;
@@ -156,6 +211,18 @@ async function deleteExpense(){
   if(item) await moveToTrash('expense', item);
   closeModal('modal-expense'); renderAll(); if(document.getElementById('view-expenses').classList.contains('active')) renderExpenses();
   showToast('Náklad odstránený (v Koši 30 dní)');
+}
+async function cancelFutureRecurringExpenses(){
+  const id = document.getElementById('exp-id').value;
+  const item = DATA.expenses.find(e=>e.id===id);
+  if(!item || !item.recurringGroupId) return;
+  if(!confirm('Zrušiť tento a všetky budúce výskyty tohto opakovaného nákladu? Minulé výskyty ostanú zachované.')) return;
+  const toRemove = DATA.expenses.filter(e=>e.recurringGroupId===item.recurringGroupId && e.date >= item.date);
+  DATA.expenses = DATA.expenses.filter(e=>!(e.recurringGroupId===item.recurringGroupId && e.date >= item.date));
+  await saveKey('expenses', DATA.expenses);
+  for(const rem of toRemove){ await moveToTrash('expense', rem); }
+  closeModal('modal-expense'); renderAll(); if(document.getElementById('view-expenses').classList.contains('active')) renderExpenses();
+  showToast(`Zrušených ${toRemove.length} budúcich opakovaní`);
 }
 var chartExpensesCategory;
 function renderExpenses(){
@@ -191,7 +258,7 @@ function renderExpenses(){
       const project = DATA.projects.find(p=>p.id===e.projectId);
       return `<tr onclick="openExpenseModal('${e.id}')" style="cursor:pointer;">
         <td class="num">${e.date?fmtDate(e.date):'—'}</td>
-        <td>${EXPENSE_CATEGORY_LABELS[e.category]||'Iné'}</td>
+        <td>${EXPENSE_CATEGORY_LABELS[e.category]||'Iné'}${e.recurringGroupId?' <span title="Opakovaný náklad">🔁</span>':''}</td>
         <td>${escapeHtml(e.description||'')}</td>
         <td>${project?escapeHtml(project.title):'—'}</td>
         <td class="num">${fmtMoney(e.amount)}</td>

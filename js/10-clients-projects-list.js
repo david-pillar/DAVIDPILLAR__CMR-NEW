@@ -233,17 +233,23 @@ function renderCashflowForecast(){
     cursor.setMonth(cursor.getMonth()+1);
   }
   const monthTotals = monthKeys.map(key=> unpaid.filter(i=>i.due>=todayStr && i.due.startsWith(key)).reduce((s,i)=>s+Number(i.amount||0),0));
+  // Známe budúce náklady (vrátane opakovaných, ktoré sú už predgenerované ako reálne
+  // dátumované záznamy) — dáva zmysel čistý tok, nie len prichádzajúce peniaze.
+  const visibleExpenses = DATA.expenses.filter(e=>!e.archived && e.date);
+  const monthExpenses = monthKeys.map(key=> visibleExpenses.filter(e=>e.date>=todayStr && e.date.startsWith(key)).reduce((s,e)=>s+Number(e.amount||0),0));
 
   const rows = [];
   if(overdueTotal>0) rows.push({ label:'⚠️ Po splatnosti', value:overdueTotal, danger:true });
-  monthKeys.forEach((key,i)=> rows.push({ label: monthLabels[i], value: monthTotals[i], danger:false }));
+  monthKeys.forEach((key,i)=> rows.push({ label: monthLabels[i], value: monthTotals[i], danger:false, expenses: monthExpenses[i] }));
 
   if(!rows.some(r=>r.value>0)){
     el.innerHTML = '<div class="empty">Žiadne neuhradené faktúry so splatnosťou v dohľadnej dobe.</div>';
     return;
   }
   const maxVal = Math.max(...rows.map(r=>r.value), 1);
-  el.innerHTML = rows.map(r=>`
+  el.innerHTML = rows.map(r=>{
+    const net = r.expenses ? r.value - r.expenses : null;
+    return `
     <div style="margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
         <span style="${r.danger?'color:#e05656;font-weight:600;':''}">${r.label}</span>
@@ -252,7 +258,9 @@ function renderCashflowForecast(){
       <div style="height:8px;background:var(--surface-3);border-radius:20px;overflow:hidden;">
         <div style="height:100%;width:${Math.round(r.value/maxVal*100)}%;background:${r.danger?'#e05656':'linear-gradient(90deg, var(--accent), var(--accent-hover))'};border-radius:20px;"></div>
       </div>
-    </div>`).join('');
+      ${net!==null ? `<div class="row-sub" style="margin-top:3px;">− známe náklady ${fmtMoney(r.expenses)} → čistý tok <b style="color:${net>=0?'var(--green-page)':'var(--danger)'};">${fmtMoney(net)}</b></div>` : ''}
+    </div>`;
+  }).join('');
 }
 /* ===================== RENDER: INVOICES ===================== */
 function renderInvoices(){
