@@ -471,12 +471,14 @@
         <p class="row-sub" style="margin-bottom:12px;">Vyber rok a prognóza, priemerné ceny, sezónnosť aj grafy nižšie sa prepočítajú len naň. "Ako mi idu roky" ostáva celkový prehľad, vybraný rok sa v ňom len zvýrazní.</p>
         <div class="year-tile-bar" id="pricingYearTileBar"></div>
         <div id="capacityWarning"></div>
+        <button class="btn ghost small" style="margin-top:14px;" onclick="exportPricingYearReport()">📥 Stiahnuť CSV report za vybraný rok</button>
       </div>
 
       <div class="quick-nav-chips">
         <a href="#pnl-years" onclick="scrollToPricingPanel(event,'pnl-years')">📅 Roky</a>
         <a href="#pnl-forecast" onclick="scrollToPricingPanel(event,'pnl-forecast')">🔮 Prognóza</a>
         <a href="#pnl-avgprice" onclick="scrollToPricingPanel(event,'pnl-avgprice')">💶 Ceny</a>
+        <a href="#pnl-profithour" onclick="scrollToPricingPanel(event,'pnl-profithour')">⏱️ €/hod</a>
         <a href="#pnl-season" onclick="scrollToPricingPanel(event,'pnl-season')">🌸 Sezónnosť</a>
         <a href="#pnl-graphs" onclick="scrollToPricingPanel(event,'pnl-graphs')">📊 Grafy</a>
       </div>
@@ -515,6 +517,29 @@
           </div>
         </div>
         <div id="balikPriceTrend" style="margin-top:14px;"></div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
+          <p class="row-sub" style="margin-bottom:8px;">🧮 Čo ak zdvihnem cenu balíka?</p>
+          <div class="field-row">
+            <div><label>Balík</label><select id="whatif-balik" onchange="recalcWhatIf()"></select></div>
+            <div><label>Zvýšenie ceny (%)</label><input type="number" id="whatif-pct" value="10" oninput="recalcWhatIf()"></div>
+          </div>
+          <div id="whatifResult" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;" id="pnl-profithour">
+        <h3>⏱️ Zisk na hodinu podľa balíka/typu</h3>
+        <p class="row-sub" style="margin-bottom:12px;">Cena zákazky vydelená odpracovanými hodinami (zo stránky Hodiny) — ukáže, čo je v skutočnosti najlepšie platené na hodinu práce, nie len najdrahšie na papieri.</p>
+        <div class="cols-2">
+          <div>
+            <p class="row-sub" style="margin-bottom:8px;">Podľa typu zákazky</p>
+            <div id="profitPerHourByType"></div>
+          </div>
+          <div>
+            <p class="row-sub" style="margin-bottom:8px;">Podľa balíka</p>
+            <div id="profitPerHourByBalik"></div>
+          </div>
+        </div>
       </div>
 
       <div class="panel" style="margin-top:20px;" id="pnl-season">

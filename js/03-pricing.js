@@ -547,12 +547,179 @@ function renderAvgPriceBreakdown(){
         </div>`;
     }
   }
+  populateWhatIfBalikSelect();
+  recalcWhatIf();
+}
+/* ---- "Čo ak zdvihnem cenu balíka?" — jednoduchá simulácia dopadu na ročný príjem
+   pri zachovaní rovnakého počtu zákaziek (z vybraného roka, alebo z historického
+   priemeru, ak vybraný rok ešte pre daný balík nemá žiadne zákazky). ---- */
+function populateWhatIfBalikSelect(){
+  const sel = document.getElementById('whatif-balik');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = PRICING.balicky.map(b=>`<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+  if(current) sel.value = current;
+}
+function recalcWhatIf(){
+  const el = document.getElementById('whatifResult');
+  const sel = document.getElementById('whatif-balik');
+  const pctInput = document.getElementById('whatif-pct');
+  if(!el || !sel || !pctInput) return;
+  if(!sel.value){ el.innerHTML = ''; return; }
+  const balikId = sel.value;
+  const balik = PRICING.balicky.find(b=>b.id===balikId);
+  if(!balik){ el.innerHTML = ''; return; }
+  const pct = Number(pctInput.value) || 0;
+  const year = pricingSelectedYear || String(new Date().getFullYear());
+  const currentPrice = getBalikPrice(balikId, year);
+  const newPrice = currentPrice * (1 + pct/100);
+
+  let count = DATA.projects.filter(p=>{
+    const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
+    return b===balikId && p.deadline && p.deadline.startsWith(year);
+  }).length;
+  let countLabel = `za rok ${year}`;
+  if(count === 0){
+    const perYear = {};
+    DATA.projects.forEach(p=>{
+      const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
+      if(b!==balikId || !p.deadline) return;
+      const y = p.deadline.slice(0,4);
+      perYear[y] = (perYear[y]||0) + 1;
+    });
+    const yearsWithData = Object.keys(perYear);
+    count = yearsWithData.length ? Math.round(yearsWithData.reduce((s,y)=>s+perYear[y],0) / yearsWithData.length) : 0;
+    countLabel = 'priemerne za rok, z histórie (rok ' + year + ' zatiaľ nemá žiadnu)';
+  }
+
+  if(count === 0){
+    el.innerHTML = '<div class="empty">Tento balík zatiaľ nemá žiadne zákazky — nedá sa odhadnúť dopad.</div>';
+    return;
+  }
+  const currentRevenue = currentPrice * count;
+  const newRevenue = newPrice * count;
+  const diff = newRevenue - currentRevenue;
+  const diffColor = diff >= 0 ? 'var(--green-page)' : 'var(--danger)';
+  el.innerHTML = `<div style="font-size:13px;line-height:1.7;">
+    Aktuálna cena: <b>${fmtMoney(currentPrice)}</b> → nová cena: <b style="color:var(--accent);">${fmtMoney(newPrice)}</b> (${pct>=0?'+':''}${pct}%)<br>
+    Pri ${count} zákazkách ${countLabel}: ${fmtMoney(currentRevenue)} → ${fmtMoney(newRevenue)}<br>
+    Rozdiel: <b style="color:${diffColor};">${diff>=0?'+':''}${fmtMoney(diff)}/rok</b>
+  </div>`;
+}
+/* ---- Zisk na hodinu podľa balíka/typu — spája cenu zákazky s odpracovanými hodinami
+   (p.timeEntries zo stránky Hodiny), aby bolo vidieť, čo je naozaj najlepšie platené
+   na hodinu práce, nie len najdrahšie na papieri. ---- */
+function renderProfitPerHour(){
+  const typeEl = document.getElementById('profitPerHourByType');
+  const balikEl = document.getElementById('profitPerHourByBalik');
+  if(!typeEl || !balikEl) return;
+  const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip', ine:'Iné' };
+  const yearFiltered = pricingSelectedYear
+    ? DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(pricingSelectedYear))
+    : DATA.projects;
+
+  function computeGroups(keyFn, labelFn){
+    const groups = {};
+    yearFiltered.forEach(p=>{
+      const hours = (p.timeEntries||[]).reduce((s,e)=>s+Number(e.hours||0),0);
+      if(!p.budget || hours<=0) return;
+      const key = keyFn(p);
+      if(!key) return;
+      if(!groups[key]) groups[key] = { budget:0, hours:0, count:0 };
+      groups[key].budget += Number(p.budget);
+      groups[key].hours += hours;
+      groups[key].count++;
+    });
+    return Object.keys(groups).map(k=>({
+      label: labelFn(k),
+      rate: groups[k].budget / groups[k].hours,
+      hours: groups[k].hours,
+      count: groups[k].count
+    })).sort((a,b)=>b.rate-a.rate);
+  }
+
+  const byType = computeGroups(p=>p.type||'ine', k=>typeLabels[k]||k);
+  const byBalik = computeGroups(p=>(p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik), k=>'Balík '+k);
+
+  const renderTable = (rows)=> rows.length ? `<table><thead><tr><th>Typ</th><th>Hodiny</th><th>€/hod</th><th>Počet</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td class="num">${Math.round(r.hours*10)/10} h</td><td class="num"><b style="color:var(--accent);">${fmtMoney(Math.round(r.rate*100)/100)}</b></td><td class="num">${r.count}</td></tr>`).join('')}
+  </tbody></table>` : '<div class="empty">Zatiaľ žiadne dáta — pridaj odpracované hodiny na stránke Hodiny.</div>';
+
+  typeEl.innerHTML = renderTable(byType);
+  balikEl.innerHTML = renderTable(byBalik);
+}
+/* ---- Export ročného prehľadu Cenotvorby (CSV) — súhrn, priemery podľa typu/balíka
+   a sezónnosť pre vybraný rok (alebo aktuálny, ak nič nie je vybrané). ---- */
+function exportPricingYearReport(){
+  const year = pricingSelectedYear || String(new Date().getFullYear());
+  const yearProjects = DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(year));
+  const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip', ine:'Iné' };
+  const monthNames = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+
+  const count = yearProjects.length;
+  const budgetSum = yearProjects.reduce((s,p)=>s+Number(p.budget||0),0);
+  const paidSum = DATA.invoices.filter(i=>{
+    if(i.status !== 'uhradena') return false;
+    const project = DATA.projects.find(p=>p.id===i.projectId);
+    const dateStr = (project && project.deadline) || i.due;
+    return dateStr && dateStr.startsWith(year);
+  }).reduce((s,i)=>s+Number(i.amount||0),0);
+
+  const byType = {};
+  yearProjects.forEach(p=>{ if(!p.budget) return; const t=p.type||'ine'; if(!byType[t]) byType[t]=[]; byType[t].push(Number(p.budget)); });
+  const byBalik = {};
+  yearProjects.forEach(p=>{
+    const b = (p.wedding && p.wedding.balik) || (p.stuzkova && p.stuzkova.balik);
+    if(!b || !p.budget) return;
+    if(!byBalik[b]) byBalik[b] = [];
+    byBalik[b].push(Number(p.budget));
+  });
+  const monthCounts = new Array(12).fill(0);
+  yearProjects.forEach(p=>{ const m = Number(p.deadline.slice(5,7))-1; if(m>=0 && m<12) monthCounts[m]++; });
+
+  const line = (fields)=> fields.map(csvEscapeField).join(',');
+  const lines = [];
+  lines.push(line([`Cenotvorba — ročný prehľad ${year}`]));
+  lines.push(line([]));
+  lines.push(line(['Súhrn']));
+  lines.push(line(['Počet zákaziek', count]));
+  lines.push(line(['Rozpočet spolu (€)', budgetSum.toFixed(2)]));
+  lines.push(line(['Vyplatené (€)', paidSum.toFixed(2)]));
+  lines.push(line([]));
+  lines.push(line(['Priemerná cena podľa typu']));
+  lines.push(line(['Typ','Počet','Priemer (€)','Medián (€)']));
+  Object.keys(byType).forEach(t=>{
+    const vals = byType[t];
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    lines.push(line([typeLabels[t]||t, vals.length, avg.toFixed(2), median(vals).toFixed(2)]));
+  });
+  lines.push(line([]));
+  lines.push(line(['Priemerná cena podľa balíka']));
+  lines.push(line(['Balík','Počet','Priemer (€)','Medián (€)']));
+  Object.keys(byBalik).forEach(b=>{
+    const vals = byBalik[b];
+    const avg = vals.reduce((a,b2)=>a+b2,0)/vals.length;
+    lines.push(line(['Balík '+b, vals.length, avg.toFixed(2), median(vals).toFixed(2)]));
+  });
+  lines.push(line([]));
+  lines.push(line(['Sezónnosť — počet zákaziek podľa mesiaca']));
+  lines.push(line(['Mesiac','Počet']));
+  monthNames.forEach((name,i)=> lines.push(line([name, monthCounts[i]])));
+
+  const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `slate-cenotvorba-${year}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Export stiahnutý — otvor ho priamo v Exceli');
 }
 function renderPricingCharts(){
   renderPricingYearTileBar();
   renderYearsAndSeasonCharts();
   renderPricingForecast();
   renderAvgPriceBreakdown();
+  renderProfitPerHour();
   renderCapacityWarning();
   const projects = pricingSelectedYear
     ? DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(pricingSelectedYear))
