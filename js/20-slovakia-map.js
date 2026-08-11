@@ -61,6 +61,7 @@ function setMapTypeFilter(type, btnEl){
   mapTypeFilter = type;
   document.querySelectorAll('.map-filter-btn').forEach(b=>b.classList.remove('active'));
   if(btnEl) btnEl.classList.add('active');
+  mapListExpanded = false;
   renderSlovakiaMap();
 }
 
@@ -154,8 +155,18 @@ function renderSkMapSvg(byVillage){
 
   const names = Object.keys(byVillage).filter(k=>byVillage[k].found);
   const maxCount = Math.max(...names.map(k=>byVillage[k].count), 1);
-  // Popisky priamo na mape len pri väčších obciach (top 6 podľa počtu), aby sa mapa nezaplnila textom.
-  const labelNames = new Set(names.slice().sort((a,b)=>byVillage[b].count-byVillage[a].count).slice(0,6));
+  // Popisky priamo na mape len pri väčších obciach — a len ak nie sú príliš blízko už
+  // popísanej (väčšej) obci, inak by sa pri susediacich obciach text prekrýval.
+  const MIN_LABEL_DIST = 42;
+  const labelNames = new Set();
+  const labeledPoints = [];
+  names.slice().sort((a,b)=>byVillage[b].count-byVillage[a].count).forEach(name=>{
+    if(labelNames.size >= 6) return;
+    const v = byVillage[name];
+    const [px,py] = projectSkPoint(v.lon, v.lat);
+    const tooClose = labeledPoints.some(p=> Math.hypot(p[0]-px, p[1]-py) < MIN_LABEL_DIST);
+    if(!tooClose){ labelNames.add(name); labeledPoints.push([px,py]); }
+  });
 
   const dotsHtml = names.map(name=>{
     const v = byVillage[name];
@@ -179,17 +190,57 @@ function renderSkMapSvg(byVillage){
   }));
 }
 
+/* ---- Zoznam obcí — vyhľadávanie, zoraďovanie kliknutím na hlavičku, a "top 15 +
+   zobraziť všetky", aby dlhý zoznam nezahltil stránku. Posledné dáta si appka
+   pamätá (mapListByVillageCache), aby zmena hľadania/zoradenia nemusela znovu geokódovať. ---- */
+var mapListByVillageCache = null;
+var mapListSearch = '';
+var mapListSort = { field:'count', dir:'desc' };
+var mapListExpanded = false;
+function onMapListSearchInput(){
+  mapListSearch = document.getElementById('mapListSearch').value;
+  mapListExpanded = false;
+  renderSkMapVillageList(mapListByVillageCache);
+}
+function setMapListSort(field){
+  if(mapListSort.field === field) mapListSort.dir = mapListSort.dir==='asc' ? 'desc' : 'asc';
+  else mapListSort = { field, dir: field==='name' ? 'asc' : 'desc' };
+  renderSkMapVillageList(mapListByVillageCache);
+}
+function toggleMapListExpanded(){
+  mapListExpanded = !mapListExpanded;
+  renderSkMapVillageList(mapListByVillageCache);
+}
 function renderSkMapVillageList(byVillage){
+  if(byVillage) mapListByVillageCache = byVillage;
   const el = document.getElementById('mapVillageList');
-  if(!el) return;
-  const rows = Object.keys(byVillage)
-    .map(name=>({ name, count: byVillage[name].count, found: byVillage[name].found }))
-    .sort((a,b)=> b.count-a.count || a.name.localeCompare(b.name));
-  if(!rows.length){ el.innerHTML = '<div class="empty">Žiadne dáta.</div>'; return; }
+  if(!el || !byVillage) return;
+
+  let rows = Object.keys(byVillage).map(name=>({ name, count: byVillage[name].count, found: byVillage[name].found }));
+  const q = mapListSearch.trim().toLowerCase();
+  if(q) rows = rows.filter(r=>r.name.toLowerCase().includes(q));
+  rows.sort((a,b)=>{
+    const cmp = mapListSort.field==='name' ? a.name.localeCompare(b.name) : (a.count-b.count);
+    return mapListSort.dir==='asc' ? cmp : -cmp;
+  });
+
+  if(!rows.length){ el.innerHTML = `<div class="empty">${q?'Žiadna obec nezodpovedá hľadaniu.':'Žiadne dáta.'}</div>`; return; }
+
+  const TOP_N = 15;
+  const visibleRows = mapListExpanded ? rows : rows.slice(0, TOP_N);
+  const showMedals = mapListSort.field==='count' && mapListSort.dir==='desc' && !q;
   const medals = ['🥇','🥈','🥉'];
-  el.innerHTML = `<table><thead><tr><th>Obec / mesto</th><th>Počet zákaziek</th></tr></thead><tbody>
-    ${rows.map((r,i)=>`<tr><td>${medals[i]?medals[i]+' ':''}${escapeHtml(r.name)}${r.found?'':' <span class="row-sub">(poloha sa nenašla)</span>'}</td><td class="num">${r.count}</td></tr>`).join('')}
-  </tbody></table>`;
+  const arrow = field => mapListSort.field===field ? (mapListSort.dir==='asc'?' ▲':' ▼') : '';
+
+  el.innerHTML = `
+    <table><thead><tr>
+      <th style="cursor:pointer;user-select:none;" onclick="setMapListSort('name')">Obec / mesto${arrow('name')}</th>
+      <th style="cursor:pointer;user-select:none;" onclick="setMapListSort('count')">Počet${arrow('count')}</th>
+    </tr></thead><tbody>
+      ${visibleRows.map((r,i)=>`<tr><td>${showMedals&&medals[i]?medals[i]+' ':''}${escapeHtml(r.name)}${r.found?'':' <span class="row-sub">(poloha sa nenašla)</span>'}</td><td class="num">${r.count}</td></tr>`).join('')}
+    </tbody></table>
+    ${rows.length>TOP_N ? `<button class="btn ghost small" style="margin-top:10px;" onclick="toggleMapListExpanded()">${mapListExpanded?'Zobraziť menej':`Zobraziť všetky (${rows.length})`}</button>` : ''}
+  `;
 }
 
 function renderSkMapStats(byVillage, homeGeo){
