@@ -247,8 +247,11 @@
 
   /* ---- Mapa Slovenska (zaujímavostný prehľad zákaziek podľa obce) ---- */
   .sk-map-outline{fill:var(--surface-2);stroke:var(--accent);stroke-width:2;}
-  .sk-map-dot{fill:var(--accent);fill-opacity:.5;stroke:var(--accent);stroke-width:1.2;cursor:pointer;transition:fill-opacity .15s ease;}
-  .sk-map-dot:hover{fill-opacity:.85;}
+  .sk-map-dot{fill-opacity:.55;stroke-width:1.2;cursor:pointer;transition:r .5s cubic-bezier(.22,1,.36,1), fill-opacity .15s ease;}
+  .sk-map-dot:hover{fill-opacity:.9;}
+  .sk-map-ref-dot{fill:var(--text-dim);opacity:.5;}
+  .sk-map-ref-label{font-size:10px;fill:var(--text-dim);opacity:.6;font-family:inherit;}
+  .sk-map-village-label{font-size:11px;font-weight:700;fill:var(--text);text-anchor:middle;pointer-events:none;}
   tr.rate-high td:nth-child(5){color:#7fdba6;font-weight:700;}
   tr.rate-high{box-shadow:inset 3px 0 0 0 rgba(76,191,125,.6);}
   tr.rate-low td:nth-child(5){color:#f0827f;font-weight:700;}
