@@ -7,6 +7,7 @@ function onProjectTypeChange(){
   document.getElementById('pr-wedding-fields').style.display = (type==='svadba') ? 'flex' : 'none';
   document.getElementById('pr-stuzkova-fields').style.display = (type==='stuzkova') ? 'flex' : 'none';
   document.getElementById('pr-schedule-btn').style.display = (type==='svadba') ? 'inline-flex' : 'none';
+  document.getElementById('pr-questionnaire-btn').style.display = (type==='svadba' || type==='stuzkova') ? 'inline-flex' : 'none';
   // Pri NOVEJ zákazke (nie pri úprave existujúcej) automaticky predvyplň bežné kroky
   // podľa zvoleného typu, ak checklist ešte nemá žiadne položky — ušetrí klik na "✨ Vyplniť bežné kroky".
   const isNewProject = !document.getElementById('pr-id').value;

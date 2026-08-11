@@ -304,6 +304,7 @@ document.getElementById('nav').addEventListener('click', (e)=>{
   if(view==='vendors') renderVendors();
   if(view==='trash') renderTrash();
   if(view==='archive') renderArchive();
+  if(view==='map') renderSlovakiaMap();
 });
 
 document.getElementById('companyNameInput').addEventListener('change', (e)=>{

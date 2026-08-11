@@ -513,6 +513,125 @@ async function generateContractPDF(){
   }
 }
 
+/* ---- Dotazník pre klienta (PDF) — vygeneruje vyplniteľný dotazník na natáčanie
+   (svadba/stužková), aby klient poslal späť detaily harmonogramu, vízie a kontaktov.
+   Predvyplní, čo už appka o zákazke vie; zvyšok necháva ako riadky na vyplnenie. ---- */
+const QBLANK = '_____________________________________________';
+async function generateClientQuestionnairePdf(){
+  const id = document.getElementById('pr-id').value;
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project){ showToast('Najprv zákazku ulož, potom vygeneruj dotazník'); return; }
+  if(!window.jspdf){ showToast('PDF knižnica sa ešte načítava, skús o chvíľu znova'); return; }
+  const client = DATA.clients.find(c=>c.id===project.clientId);
+  const dateLine = project.deadline ? fmtDate(project.deadline) : QBLANK;
+  const lines = [];
+
+  if(project.type==='svadba'){
+    const w = project.wedding || {};
+    const coupleLine = (w.nevestaMeno||client?.name||'_____________') + ' & ' + (w.zenichMeno||'_____________');
+    lines.push('DOTAZNÍK PRE KLIENTA');
+    lines.push(`${coupleLine} — ${dateLine}`);
+    lines.push('');
+    lines.push('Tento dotazník mi pomôže lepšie sa pripraviť na váš deň. Vyplňte, prosím, aspoň 2-3 týždne pred termínom.');
+    lines.push('');
+    lines.push('VÁŠ PRÍBEH A VÍZIA');
+    lines.push('Ako ste sa spoznali? (pár viet, prípadne výnimočná historka)');
+    lines.push(QBLANK); lines.push(QBLANK);
+    lines.push('Čo je pre vás na tento deň úplne najdôležitejšie?');
+    lines.push(QBLANK);
+    lines.push('Aký štýl videa preferujete? (dokumentárny / cinematický / svetlý a vzdušný / iné)');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('HARMONOGRAM DŇA');
+    lines.push('Príprava nevesty — miesto a čas začiatku:');
+    lines.push(w.nevestaAdresa || QBLANK);
+    lines.push('Príprava ženícha — miesto a čas začiatku:');
+    lines.push(w.zenichAdresa || QBLANK);
+    lines.push('First look — plánujete? Kde a o koľkej?');
+    lines.push(QBLANK);
+    lines.push('Obrad — miesto a čas začiatku:');
+    lines.push(`${w.sobasKostol || QBLANK}${w.sobasCas ? ' o '+w.sobasCas : ''}`);
+    lines.push('Hostina — miesto a začiatok:');
+    lines.push(w.svadbaMiesto || QBLANK);
+    lines.push('Odchod / rozlúčka — plánovaný spôsob (prskavky, konfety...):');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('PRÍPRAVA A DETAILY');
+    lines.push('Natáčať prípravu oboch spolu, alebo oddelene? Ako dlho má trvať?');
+    lines.push(QBLANK);
+    lines.push('Sentimentálne predmety/tradície na zachytenie (šperk po babke, čítanie listu...):');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('OBRAD');
+    lines.push('Náboženské/kultúrne tradície, na ktoré si mám dať pozor pri natáčaní:');
+    lines.push(QBLANK);
+    lines.push('Momenty, ktoré chcete mať z viacerých uhlov (sľuby, reakcie rodičov...):');
+    lines.push(QBLANK);
+    lines.push('Meno a kontakt na sobášiaceho/farára:');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('PREJAVY');
+    lines.push('Kto bude mať prejav? Zachytiť celý, alebo len výber?');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('HOSTINA');
+    lines.push(`Hudba/kapela: ${w.hudbaMeno || QBLANK}`);
+    lines.push('Plánované tance (prvý tanec, s rodičmi...) a ich poradie:');
+    lines.push(QBLANK);
+    lines.push('Krájanie torty — plánovaný čas:');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('DODÁVATELIA A KONTAKTY');
+    lines.push(`Fotograf: ${w.fotograf || QBLANK}`);
+    lines.push('Wedding koordinátor / druhý organizátor:');
+    lines.push(QBLANK);
+    lines.push('Núdzové kontakty (min. 2, vrátane vás):');
+    lines.push('1. ' + QBLANK);
+    lines.push('2. ' + QBLANK);
+    lines.push('');
+    lines.push('PREKVAPENIA');
+    lines.push('Plánujete prekvapenie pre partnera/hostí, o ktorom by som mal vedieť vopred (aby som ho zachytil, nie pokazil)?');
+    lines.push(QBLANK); lines.push(QBLANK);
+  }else{
+    const s = project.stuzkova || {};
+    lines.push('DOTAZNÍK PRE KLIENTA');
+    lines.push(`${client?client.name:'_____________'} — ${dateLine}`);
+    lines.push('');
+    lines.push('Tento dotazník mi pomôže lepšie sa pripraviť na váš deň. Vyplňte, prosím, aspoň 2 týždne pred termínom.');
+    lines.push('');
+    lines.push('ZÁKLADNÉ INFO');
+    lines.push('Miesto konania a čas začiatku:');
+    lines.push(s.miesto || QBLANK);
+    lines.push('Aký štýl videa preferujete? (dokumentárny / cinematický / živé/dynamické)');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('PROGRAM VEČERA');
+    lines.push('Harmonogram programu (nástup, šerpy/stužky, tanečky, prekvapenia...):');
+    lines.push(QBLANK); lines.push(QBLANK);
+    lines.push('Kto moderuje/vedie program?');
+    lines.push(QBLANK);
+    lines.push(`Hudba/DJ: ${s.hudba || QBLANK}`);
+    lines.push('');
+    lines.push('DÔLEŽITÉ MOMENTY');
+    lines.push('Momenty, ktoré nesmiem zmeškať (prejavy, ocenenia, tanečné vystúpenia...):');
+    lines.push(QBLANK);
+    lines.push('');
+    lines.push('DODÁVATELIA A KONTAKTY');
+    lines.push(`Fotograf: ${s.fotograf || QBLANK}`);
+    lines.push('Núdzové kontakty (min. 2, vrátane teba):');
+    lines.push('1. ' + QBLANK);
+    lines.push('2. ' + QBLANK);
+    lines.push('');
+    lines.push('PREKVAPENIA');
+    lines.push('Plánuje sa nejaké prekvapenie, o ktorom by som mal vedieť vopred?');
+    lines.push(QBLANK); lines.push(QBLANK);
+  }
+
+  const doc = renderTextToPdf(lines.join('\n'));
+  const filename = `dotaznik-${sanitizeName(project.title)}.pdf`;
+  await saveDocSmart(doc, filename, (project.folderName || project.title));
+}
+
 /* ---- Invoice PDF generation ---- */
 async function generateInvoicePDF(){
   const id = document.getElementById('iv-id').value;
