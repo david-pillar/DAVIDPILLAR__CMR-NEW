@@ -65,6 +65,28 @@ function setMapTypeFilter(type, btnEl){
   renderSlovakiaMap();
 }
 
+/* ---- Filter podľa roka (rovnaký princíp ako v Cenotvorbe) — "" = Všetky roky.
+   Zoznam dostupných rokov sa dopĺňa dynamicky z termínov zákaziek. ---- */
+var mapYearFilter = '';
+function setMapYearFilter(year, btnEl){
+  mapYearFilter = year;
+  document.querySelectorAll('.map-year-filter-btn').forEach(b=>b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+  mapListExpanded = false;
+  renderSlovakiaMap();
+}
+function renderMapYearFilterRow(){
+  const el = document.getElementById('mapYearFilterRow');
+  if(!el) return;
+  const years = new Set();
+  DATA.projects.forEach(p=>{ if(p.deadline) years.add(p.deadline.slice(0,4)); });
+  const sortedYears = Array.from(years).sort();
+  el.innerHTML = `
+    <button class="btn ghost small map-year-filter-btn${!mapYearFilter?' active':''}" onclick="setMapYearFilter('', this)">Všetky roky</button>
+    ${sortedYears.map(y=>`<button class="btn ghost small map-year-filter-btn${mapYearFilter===y?' active':''}" onclick="setMapYearFilter('${y}', this)">${y}</button>`).join('')}
+  `;
+}
+
 async function renderSlovakiaMap(){
   const statusEl = document.getElementById('mapStatus');
   const svgEl = document.getElementById('slovakiaMapSvg');
@@ -72,8 +94,11 @@ async function renderSlovakiaMap(){
   const statsEl = document.getElementById('mapStatsGrid');
   if(!svgEl) return;
 
+  renderMapYearFilterRow();
+
   const projects = DATA.projects.filter(p=>{
     if(mapTypeFilter && p.type !== mapTypeFilter) return false;
+    if(mapYearFilter && (!p.deadline || !p.deadline.startsWith(mapYearFilter))) return false;
     return !!getProjectWeatherLocation(p);
   });
 

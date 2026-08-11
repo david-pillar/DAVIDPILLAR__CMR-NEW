@@ -244,6 +244,7 @@
   .btn.ghost.small.years-view-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,80,2,.4);}
   .btn.ghost.small.cal-view-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,80,2,.4);}
   .btn.ghost.small.map-filter-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,80,2,.4);}
+  .btn.ghost.small.map-year-filter-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,80,2,.4);}
 
   /* ---- Mapa Slovenska (zaujímavostný prehľad zákaziek podľa obce) ---- */
   .sk-map-outline{fill:var(--surface-2);stroke:var(--accent);stroke-width:2;}

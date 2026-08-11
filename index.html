@@ -697,12 +697,13 @@
       </div>
 
       <div class="panel" style="margin-bottom:16px;">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
           <button class="btn ghost small map-filter-btn active" data-type="" onclick="setMapTypeFilter('', this)">Všetky</button>
           <button class="btn ghost small map-filter-btn" data-type="svadba" onclick="setMapTypeFilter('svadba', this)">💍 Svadby</button>
           <button class="btn ghost small map-filter-btn" data-type="stuzkova" onclick="setMapTypeFilter('stuzkova', this)">🎓 Stužkové</button>
           <button class="btn ghost small map-filter-btn" data-type="klip" onclick="setMapTypeFilter('klip', this)">🎬 Klipy</button>
         </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;" id="mapYearFilterRow"></div>
         <div class="grid-stats" id="mapStatsGrid" style="margin-bottom:0;"></div>
       </div>
 
