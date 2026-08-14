@@ -2,6 +2,16 @@
    Cenotvorba — balíky, príplatky, cenník podľa roka, kalkulačka, grafy.
    ===================================================== */
 
+/* ---- Koľko je zo zákazky reálne uhradené. Prioritne podľa faktúr (ak k zákazke existuje
+   uhradená faktúra), inak podľa stavu zákazky priamo v Zákazkách — status "zaplatene"
+   (Uhradené) sa počíta ako celý rozpočet zaplatený. Toto je jediné miesto, kde sa táto
+   logika počíta, aby "Vyplatené" všade v Cenotvorbe znamenalo to isté. ---- */
+function getProjectPaidAmount(p){
+  const paidInvoices = DATA.invoices.filter(i=>i.projectId===p.id && i.status==='uhradena');
+  if(paidInvoices.length) return paidInvoices.reduce((s,i)=>s+Number(i.amount||0),0);
+  return p.status === 'zaplatene' ? Number(p.budget||0) : 0;
+}
+
 function fillSettingsForm(){
   document.getElementById('set-companyName').value = DATA.settings.companyName || '';
   document.getElementById('set-ownerName').value = DATA.settings.ownerName || '';
@@ -410,15 +420,12 @@ function renderPricingForecast(){
     pctYearElapsed = Math.min(100, Math.round(daysElapsed/daysInYear*100));
   }
 
-  const paidToDate = DATA.invoices.filter(i=>{
-    if(i.status !== 'uhradena') return false;
-    const project = DATA.projects.find(p=>p.id===i.projectId);
-    const dateStr = (project && project.deadline) || i.due;
-    return dateStr && dateStr.startsWith(String(year));
-  }).reduce((s,i)=>s+Number(i.amount||0),0);
-
-  const bookedThisYear = DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(String(year)))
-    .reduce((s,p)=>s+Number(p.budget||0),0);
+  const yearProjectsForecast = DATA.projects.filter(p=>p.deadline && p.deadline.startsWith(String(year)));
+  const paidToDate = yearProjectsForecast.reduce((s,p)=>s+getProjectPaidAmount(p),0);
+  const bookedThisYear = yearProjectsForecast.reduce((s,p)=>s+Number(p.budget||0),0);
+  const unpaidThisYear = Math.max(0, bookedThisYear - paidToDate);
+  const pctPaidOfYear = bookedThisYear>0 ? Math.round(paidToDate/bookedThisYear*100) : 0;
+  const pctUnpaidOfYear = bookedThisYear>0 ? 100 - pctPaidOfYear : 0;
 
   const runRate = daysElapsed>0 ? paidToDate / daysElapsed * daysInYear : 0;
   const estimate = isPastYear ? paidToDate : Math.max(runRate, bookedThisYear);
@@ -426,6 +433,21 @@ function renderPricingForecast(){
   const paceCaption = isPastYear
     ? `Rok ${year} je uzavretý`
     : (isFutureYear ? `Rok ${year} ešte nezačal — zatiaľ len zabookované zákazky` : `Prešlo ${pctYearElapsed}% roka ${year} · Tempo podľa platieb: ${fmtMoney(runRate)}/rok`);
+
+  // Koľko % z celoročnej zabookovanej hodnoty je už reálne uhradené (status "Zaplatené" v Zákazkách,
+  // prípadne uhradená faktúra) a koľko ešte čaká na platbu.
+  let paidUnpaidHtml = '';
+  if(bookedThisYear > 0){
+    paidUnpaidHtml = `
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--surface-3);">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+          <span>💶 Uhradené vs. neuhradené (${year})</span>
+          <span class="row-sub"><b style="color:var(--green-page);">${pctPaidOfYear}% uhradené</b> · <b style="color:var(--danger);">${pctUnpaidOfYear}% neuhradené</b></span>
+        </div>
+        <div class="hbar-track"><div class="hbar-fill" data-pct="${pctPaidOfYear}" style="width:0%;"></div></div>
+        <div class="row-sub" style="margin-top:4px;">${fmtMoney(paidToDate)} uhradené · ${fmtMoney(unpaidThisYear)} zatiaľ neuhradené (z ${fmtMoney(bookedThisYear)} zabookovaných za rok ${year})</div>
+      </div>`;
+  }
 
   const goal = DATA.settings.yearlyGoals && DATA.settings.yearlyGoals[year];
   let goalHtml = '';
@@ -548,6 +570,7 @@ function renderPricingForecast(){
       <span>${paceCaption}</span>
     </div>
     <div class="hbar-track"><div class="hbar-fill" data-pct="${pctYearElapsed}" style="width:0%;"></div></div>
+    ${paidUnpaidHtml}
     ${goalHtml}
     ${profitGoalHtml}
     ${laggingHtml}
@@ -767,12 +790,7 @@ function exportPricingYearReport(){
 
   const count = yearProjects.length;
   const budgetSum = yearProjects.reduce((s,p)=>s+Number(p.budget||0),0);
-  const paidSum = DATA.invoices.filter(i=>{
-    if(i.status !== 'uhradena') return false;
-    const project = DATA.projects.find(p=>p.id===i.projectId);
-    const dateStr = (project && project.deadline) || i.due;
-    return dateStr && dateStr.startsWith(year);
-  }).reduce((s,i)=>s+Number(i.amount||0),0);
+  const paidSum = yearProjects.reduce((s,p)=>s+getProjectPaidAmount(p),0);
 
   const byType = {};
   yearProjects.forEach(p=>{ if(!p.budget) return; const t=p.type||'ine'; if(!byType[t]) byType[t]=[]; byType[t].push(Number(p.budget)); });
@@ -794,6 +812,8 @@ function exportPricingYearReport(){
   lines.push(line(['Počet zákaziek', count]));
   lines.push(line(['Rozpočet spolu (€)', budgetSum.toFixed(2)]));
   lines.push(line(['Vyplatené (€)', paidSum.toFixed(2)]));
+  lines.push(line(['Neuhradené (€)', Math.max(0, budgetSum-paidSum).toFixed(2)]));
+  lines.push(line(['Uhradené (%)', budgetSum>0 ? Math.round(paidSum/budgetSum*100) : 0]));
   lines.push(line([]));
   lines.push(line(['Priemerná cena podľa typu']));
   lines.push(line(['Typ','Počet','Priemer (€)','Medián (€)']));
@@ -886,15 +906,15 @@ function renderYearsAndSeasonCharts(){
 
   const yearMap = {}; // year -> { count, value }
   if(yearsOverviewMode === 'paid'){
-    if(subtextEl) subtextEl.textContent = 'Skutočne prijaté peniaze z uhradených faktúr, podľa roku termínu zákazky.';
-    DATA.invoices.filter(i=>i.status==='uhradena').forEach(i=>{
-      const project = DATA.projects.find(p=>p.id===i.projectId);
-      const dateStr = (project && project.deadline) || i.due;
-      if(!dateStr) return;
-      const y = dateStr.slice(0,4);
+    if(subtextEl) subtextEl.textContent = 'Skutočne uhradené zákazky (status "Zaplatené", prípadne uhradená faktúra), podľa roku termínu zákazky.';
+    projects.forEach(p=>{
+      if(!p.deadline) return;
+      const paidAmount = getProjectPaidAmount(p);
+      if(paidAmount <= 0) return;
+      const y = p.deadline.slice(0,4);
       if(!yearMap[y]) yearMap[y] = { count:0, value:0 };
       yearMap[y].count++;
-      yearMap[y].value += Number(i.amount)||0;
+      yearMap[y].value += paidAmount;
     });
   }else{
     if(subtextEl) subtextEl.textContent = 'Počet zabookovaných zákaziek podľa roku termínu (bez ohľadu na to, či už majú vyplnenú cenu) — vrátane archivovaných rokov.';
@@ -929,12 +949,12 @@ function renderYearsAndSeasonCharts(){
     const toDateVal = (year, useCount)=>{
       let sum = 0;
       if(yearsOverviewMode === 'paid'){
-        DATA.invoices.filter(i=>i.status==='uhradena').forEach(i=>{
-          const project = DATA.projects.find(p=>p.id===i.projectId);
-          const dateStr = (project && project.deadline) || i.due;
-          if(!dateStr || !dateStr.startsWith(String(year))) return;
-          if(dateStr.slice(5,10) > cutoffMD) return;
-          sum += useCount ? 1 : (Number(i.amount)||0);
+        projects.forEach(p=>{
+          if(!p.deadline || !p.deadline.startsWith(String(year))) return;
+          if(p.deadline.slice(5,10) > cutoffMD) return;
+          const paidAmount = getProjectPaidAmount(p);
+          if(paidAmount <= 0) return;
+          sum += useCount ? 1 : paidAmount;
         });
       }else{
         projects.forEach(p=>{
@@ -952,7 +972,7 @@ function renderYearsAndSeasonCharts(){
       const arrow = diffPct >= 0 ? '📈' : '📉';
       const sign = diffPct >= 0 ? '+' : '';
       const diffColor = diffPct >= 0 ? 'var(--green-page)' : 'var(--danger)';
-      const metric = yearsOverviewMode==='paid' ? 'vyplatených faktúr' : 'zákaziek';
+      const metric = yearsOverviewMode==='paid' ? 'uhradených zákaziek' : 'zákaziek';
       yoyEl.innerHTML = `${arrow} K dnešnému dňu (${cutoffMD.replace('-','.')}.) máš <b style="color:${diffColor};">${sign}${diffPct}%</b> ${metric} oproti rovnakému obdobiu ${lastYear} (${lastYearToDate} vtedy → ${thisYearToDate} teraz)`;
     }else if(thisYearToDate > 0){
       yoyEl.innerHTML = `📈 Za ${lastYear} nebolo k tomuto dátumu zaznamenané nič — tento rok už máš ${thisYearToDate}.`;
@@ -966,7 +986,7 @@ function renderYearsAndSeasonCharts(){
     if(!years.length){
       tableEl.innerHTML = '<div class="empty">Zatiaľ žiadne dáta.</div>';
     }else if(yearsOverviewMode==='paid'){
-      tableEl.innerHTML = `<table><thead><tr><th>Rok</th><th>Uhradené faktúry</th><th>Vyplatené</th></tr></thead><tbody>
+      tableEl.innerHTML = `<table><thead><tr><th>Rok</th><th>Uhradené zákazky</th><th>Vyplatené</th></tr></thead><tbody>
         ${years.map(y=>`<tr class="clickable-row" onclick="goToProjectsYear('${y}')" title="Zobraziť zákazky za rok ${y}"><td>${y} →</td><td class="num">${yearMap[y].count}</td><td class="num">${fmtMoney(yearMap[y].value)}</td></tr>`).join('')}
       </tbody></table>`;
     }else{
