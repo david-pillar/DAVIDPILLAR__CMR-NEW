@@ -514,22 +514,45 @@ async function generateContractPDF(){
 }
 
 /* ---- Rýchle zhrnutie zákazky pre Pripomienky (Reminders) — skopíruje krátky textový
-   prehľad do schránky, aby si ho jedným Cmd+V vložil ako novú pripomienku. ---- */
-function copyProjectReminderSummary(){
-  const id = document.getElementById('pr-id').value;
-  const project = DATA.projects.find(p=>p.id===id);
-  if(!project){ showToast('Najprv zákazku ulož, potom skopíruj zhrnutie'); return; }
+   prehľad do schránky, aby si ho jedným Cmd+V vložil ako novú pripomienku.
+   buildProjectReminderSummary() je zdieľaná aj tlačidlom v detaile zákazky, aj rýchlou
+   ikonkou priamo na karte v zozname Zákazky (bez nutnosti otvárať detail). ---- */
+function buildProjectReminderSummary(project){
   const client = DATA.clients.find(c=>c.id===project.clientId);
   const typeIcons = { svadba:'💍', stuzkova:'🎓', klip:'🎬', ine:'📌' };
   const icon = typeIcons[project.type] || '📌';
   const lines = [];
   lines.push(`${icon} ${project.title || 'Zákazka'}`);
   if(client && client.name) lines.push(`👤 Klient: ${client.name}`);
-  lines.push(`📅 Termín: ${project.deadline ? fmtDate(project.deadline) : 'bez termínu'}`);
+
+  let dateLine = `📅 Termín: ${project.deadline ? fmtDate(project.deadline) : 'bez termínu'}`;
+  if(project.deadline){
+    const todayStr = toLocalISODate(new Date());
+    const days = Math.round((new Date(project.deadline) - new Date(todayStr)) / 86400000);
+    if(days === 0) dateLine += ' — dnes 🎬';
+    else if(days === 1) dateLine += ' — zajtra';
+    else if(days > 1) dateLine += ` — o ${days} dní`;
+    else dateLine += ` — pred ${Math.abs(days)} dňami`;
+  }
+  lines.push(dateLine);
+
   if(project.location) lines.push(`📍 Miesto: ${project.location}`);
   if(project.budget) lines.push(`💶 Cena: ${fmtMoney(project.budget)}`);
   lines.push(`📌 Stav: ${(typeof STATUS_LABELS!=='undefined' && STATUS_LABELS[project.status]) || project.status || ''}`);
-  copyTextToClipboard(lines.join('\n'));
+  return lines.join('\n');
+}
+function copyProjectReminderSummary(){
+  const id = document.getElementById('pr-id').value;
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project){ showToast('Najprv zákazku ulož, potom skopíruj zhrnutie'); return; }
+  copyTextToClipboard(buildProjectReminderSummary(project));
+}
+/* ---- Verzia pre rýchlu ikonku na karte zákazky — nesmie otvoriť detail zákazky pod ňou. ---- */
+function copyProjectReminderSummaryById(id, evt){
+  if(evt) evt.stopPropagation();
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project) return;
+  copyTextToClipboard(buildProjectReminderSummary(project));
 }
 /* ---- Univerzálny helper na kopírovanie do schránky, s fallbackom pre kontexty,
    kde navigator.clipboard nemusí byť dostupné. ---- */

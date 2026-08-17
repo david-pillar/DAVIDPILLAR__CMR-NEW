@@ -200,7 +200,10 @@ function renderProjects(){
       ${typeTag}
       <div class="kcard-top">
         <span class="kcard-date ${dateClass}">${dateLabel}</span>
-        ${p.budget?`<span class="kcard-budget">${fmtMoney(p.budget)}</span>`:''}
+        <span style="display:flex;align-items:center;gap:6px;">
+          ${p.budget?`<span class="kcard-budget">${fmtMoney(p.budget)}</span>`:''}
+          <button class="icon-btn" style="width:24px;height:24px;font-size:12px;border-radius:6px;" title="Kopírovať pre Pripomienky" onclick="copyProjectReminderSummaryById('${p.id}', event)">🔔</button>
+        </span>
       </div>
       <div class="kcard-title">${escapeHtml(p.title||'Bez názvu')}</div>
       <div class="kcard-meta"><span>${client?escapeHtml(client.name):'— bez klienta —'}</span>${weeksLabel?`<span>${weeksLabel}</span>`:''}</div>
