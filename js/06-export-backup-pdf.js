@@ -513,6 +513,51 @@ async function generateContractPDF(){
   }
 }
 
+/* ---- Rýchle zhrnutie zákazky pre Pripomienky (Reminders) — skopíruje krátky textový
+   prehľad do schránky, aby si ho jedným Cmd+V vložil ako novú pripomienku. ---- */
+function copyProjectReminderSummary(){
+  const id = document.getElementById('pr-id').value;
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project){ showToast('Najprv zákazku ulož, potom skopíruj zhrnutie'); return; }
+  const client = DATA.clients.find(c=>c.id===project.clientId);
+  const typeIcons = { svadba:'💍', stuzkova:'🎓', klip:'🎬', ine:'📌' };
+  const icon = typeIcons[project.type] || '📌';
+  const lines = [];
+  lines.push(`${icon} ${project.title || 'Zákazka'}`);
+  if(client && client.name) lines.push(`👤 Klient: ${client.name}`);
+  lines.push(`📅 Termín: ${project.deadline ? fmtDate(project.deadline) : 'bez termínu'}`);
+  if(project.location) lines.push(`📍 Miesto: ${project.location}`);
+  if(project.budget) lines.push(`💶 Cena: ${fmtMoney(project.budget)}`);
+  lines.push(`📌 Stav: ${(typeof STATUS_LABELS!=='undefined' && STATUS_LABELS[project.status]) || project.status || ''}`);
+  copyTextToClipboard(lines.join('\n'));
+}
+/* ---- Univerzálny helper na kopírovanie do schránky, s fallbackom pre kontexty,
+   kde navigator.clipboard nemusí byť dostupné. ---- */
+function copyTextToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text)
+      .then(()=>showToast('📋 Skopírované — vlož (Cmd+V) do novej pripomienky'))
+      .catch(()=>copyTextToClipboardFallback(text));
+  }else{
+    copyTextToClipboardFallback(text);
+  }
+}
+function copyTextToClipboardFallback(text){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 Skopírované — vlož (Cmd+V) do novej pripomienky');
+  }catch(e){
+    showToast('Kopírovanie zlyhalo — skús to znova');
+  }
+}
+
 /* ---- Dotazník pre klienta (PDF) — vygeneruje vyplniteľný dotazník na natáčanie
    (svadba/stužková), aby klient poslal späť detaily harmonogramu, vízie a kontaktov.
    Predvyplní, čo už appka o zákazke vie; zvyšok necháva ako riadky na vyplnenie. ---- */

@@ -14,6 +14,7 @@ function openProjectModal(id){
   document.getElementById('projectFormTitle').textContent = editing ? 'Upraviť zákazku' : 'Nová zákazka';
   document.getElementById('pr-delete').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('pr-duplicate-btn').style.display = editing ? 'inline-flex' : 'none';
+  document.getElementById('pr-remind-btn').style.display = editing ? 'inline-flex' : 'none';
   clearWeddingFields();
   clearStuzkovaFields();
   if(editing){
