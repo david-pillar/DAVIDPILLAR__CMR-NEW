@@ -523,7 +523,7 @@ function buildProjectReminderSummary(project){
   const icon = typeIcons[project.type] || '📌';
   const lines = [];
   lines.push(`${icon} ${project.title || 'Zákazka'}`);
-  if(client && client.name) lines.push(`👤 Klient: ${client.name}`);
+  if(client && client.name) lines.push(`👤 Klient: ${client.name}${client.phone?' · '+client.phone:''}${client.email?' · '+client.email:''}`);
 
   let dateLine = `📅 Termín: ${project.deadline ? fmtDate(project.deadline) : 'bez termínu'}`;
   if(project.deadline){
@@ -539,6 +539,44 @@ function buildProjectReminderSummary(project){
   if(project.location) lines.push(`📍 Miesto: ${project.location}`);
   if(project.budget) lines.push(`💶 Cena: ${fmtMoney(project.budget)}`);
   lines.push(`📌 Stav: ${(typeof STATUS_LABELS!=='undefined' && STATUS_LABELS[project.status]) || project.status || ''}`);
+
+  // Podrobnosti podľa typu zákazky — odkiaľ je nevesta/ženích, kde je sobáš, hudba, fotograf atď.
+  if(project.type==='svadba' && project.wedding){
+    const w = project.wedding;
+    const sobasTypLabels = (typeof SOBAS_TYP_LABELS!=='undefined') ? SOBAS_TYP_LABELS : {};
+    const hudbaTypLabels = (typeof HUDBA_TYP_LABELS!=='undefined') ? HUDBA_TYP_LABELS : {};
+    lines.push('');
+    lines.push('— Detaily svadby —');
+    if(w.nevestaMeno || w.nevestaAdresa) lines.push(`👰 Nevesta: ${[w.nevestaMeno, w.nevestaAdresa && `(odkiaľ: ${w.nevestaAdresa})`].filter(Boolean).join(' ')}`);
+    if(w.zenichMeno || w.zenichAdresa) lines.push(`🤵 Ženích: ${[w.zenichMeno, w.zenichAdresa && `(odkiaľ: ${w.zenichAdresa})`].filter(Boolean).join(' ')}`);
+    if(w.svadbaMiesto) lines.push(`🥂 Hostina/oslava: ${w.svadbaMiesto}`);
+    if(w.sobasKostol || w.sobasAdresa || w.sobasTyp){
+      const sobasTypLabel = sobasTypLabels[w.sobasTyp] || w.sobasTyp;
+      lines.push(`⛪ Sobáš: ${[sobasTypLabel, w.sobasKostol, w.sobasAdresa].filter(Boolean).join(' — ')}${w.sobasCas?` o ${w.sobasCas}`:''}`);
+    }
+    if(w.hudbaTyp || w.hudbaMeno) lines.push(`🎵 Hudba: ${[hudbaTypLabels[w.hudbaTyp]||w.hudbaTyp, w.hudbaMeno].filter(Boolean).join(' — ')}`);
+    if(w.fotograf) lines.push(`📸 Fotograf: ${w.fotograf}`);
+    if(w.balik) lines.push(`📦 Balík: ${w.balik}`);
+    if(w.specialWishes) lines.push(`💭 Priania: ${w.specialWishes}`);
+  }
+  if(project.type==='stuzkova' && project.stuzkova){
+    const s = project.stuzkova;
+    lines.push('');
+    lines.push('— Detaily stužkovej —');
+    if(s.miesto) lines.push(`📍 Miesto konania: ${s.miesto}`);
+    if(s.hudba) lines.push(`🎵 Hudba: ${s.hudba}`);
+    if(s.fotograf) lines.push(`📸 Fotograf: ${s.fotograf}`);
+    if(s.pocetZiakov) lines.push(`👥 Počet žiakov: ${s.pocetZiakov}`);
+    if(s.balik) lines.push(`📦 Balík: ${s.balik}`);
+    if(s.kradnutie) lines.push('🎭 Kradnutie stužkovej: áno');
+  }
+
+  if(project.checklist && project.checklist.length){
+    const done = project.checklist.filter(i=>i.done).length;
+    lines.push(`✅ Checklist: ${done}/${project.checklist.length} hotovo`);
+  }
+  if(project.notes) lines.push(`📝 Poznámky: ${project.notes}`);
+
   return lines.join('\n');
 }
 function copyProjectReminderSummary(){
