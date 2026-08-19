@@ -197,6 +197,7 @@ function renderMessageStatusIndicator(project){
   if(!expected.length){
     el.textContent = '💬 Správy: nič sa nečaká';
     el.className = 'pr-indicator state-none';
+    renderMessageChecklist(project);
     return;
   }
   const missing = expected.filter(i=>!i.sent);
@@ -207,6 +208,44 @@ function renderMessageStatusIndicator(project){
     el.textContent = `💬 Chýba odoslať: ${missing.map(m=>m.label).join(', ')}`;
     el.className = 'pr-indicator state-partial';
   }
+  renderMessageChecklist(project);
+}
+/* ---- Ručné odkliknutie odoslanej správy priamo v zákazke — checklist-style, pre prípad,
+   že si klientovi napísal/zavolal mimo appky (SMS, telefonicky, osobne), nie cez WhatsApp
+   tlačidlo. Zdieľa rovnaké dáta (project.sentMessages) ako "Poslať teraz" na Dashboarde,
+   takže sa panel "Chýbajúce správy" aktualizuje okamžite v oboch smeroch. ---- */
+function renderMessageChecklist(project){
+  const el = document.getElementById('pr-message-checklist');
+  if(!el) return;
+  const expected = getExpectedMessageStatus(project);
+  if(!expected.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<p class="row-sub" style="margin:10px 0 2px;">Odkliknúť ako odoslané (aj keď si písal mimo appky):</p>` +
+    expected.map(item=>`
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:${item.sent?'var(--text-faint)':'var(--text)'};margin:0;${item.sent?'text-decoration:line-through;':''}">
+      <input type="checkbox" style="width:auto;" ${item.sent?'checked':''} onchange="toggleExpectedMessageSent('${project.id}','${item.key}')">
+      <span>${escapeHtml(item.label)}</span>
+    </label>`).join('');
+}
+var MESSAGE_KEY_LABELS = { potvrdenie:'Potvrdenie rezervácie', pripomienka:'Pripomienka pred natáčaním', dakujem:'Poďakovanie po odovzdaní' };
+async function toggleExpectedMessageSent(projectId, key){
+  const project = DATA.projects.find(p=>p.id===projectId);
+  if(!project) return;
+  const sentKeys = (project.sentMessages||[]).map(m=>classifyTemplateKey(m.templateName));
+  const isSent = sentKeys.includes(key);
+  if(isSent){
+    // Odznačenie odstráni len ručne pridaný záznam — skutočne odoslanú správu cez WhatsApp
+    // necháva ako dôkaz (tá sa dá zrušiť len priamo v logu, nie týmto checkboxom).
+    const hadManual = (project.sentMessages||[]).some(m=>classifyTemplateKey(m.templateName)===key && m.manual);
+    project.sentMessages = (project.sentMessages||[]).filter(m=>!(classifyTemplateKey(m.templateName)===key && m.manual));
+    if(!hadManual){ showToast('Táto správa bola odoslaná cez WhatsApp tlačidlo — zostáva označená ako odoslaná'); }
+  }else{
+    if(!project.sentMessages) project.sentMessages = [];
+    project.sentMessages.push({ templateId:null, templateName: MESSAGE_KEY_LABELS[key]||key, sentAt: new Date().toISOString(), manual:true });
+  }
+  await saveKey('projects', DATA.projects);
+  renderMessageStatusIndicator(project);
+  if(typeof renderMissingMessages==='function') renderMissingMessages();
+  if(typeof updateNavBadges==='function') updateNavBadges();
 }
 function populateMessageTemplatePicker(){
   const sel = document.getElementById('pr-message-template');

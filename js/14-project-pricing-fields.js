@@ -138,6 +138,8 @@ function renderProjectStatusIndicators(project){
     if(msgBadge){ msgBadge.textContent = '💬 Správy: uložiť zákazku najprv'; msgBadge.className = 'pr-indicator state-none'; }
     const logEl = document.getElementById('pr-sent-messages-log');
     if(logEl) logEl.innerHTML = '';
+    const msgChecklistEl = document.getElementById('pr-message-checklist');
+    if(msgChecklistEl) msgChecklistEl.innerHTML = '';
     const profitEl = document.getElementById('pr-profit-summary');
     if(profitEl) profitEl.innerHTML = '<div class="empty">Uložiť zákazku najprv.</div>';
   }
