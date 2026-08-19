@@ -221,7 +221,10 @@ function renderMissingMessages(){
         <div class="row-sub">${client?escapeHtml(client.name):'— bez klienta —'}${project.deadline?' · '+fmtDate(project.deadline):''}</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-        ${missing.map(m=>`<button class="missing-msg-badge" onclick="event.stopPropagation(); quickSendMissingMessage('${project.id}','${m.key}')" title="Poslať teraz">${escapeHtml(m.label)} ↗</button>`).join('')}
+        ${missing.map(m=> m.custom
+          ? `<span class="missing-msg-badge" style="cursor:default;opacity:.8;" title="Vlastná správa — otvor zákazku a odklikni ju tam">${escapeHtml(m.label)}</span>`
+          : `<button class="missing-msg-badge" onclick="event.stopPropagation(); quickSendMissingMessage('${project.id}','${m.key}')" title="Poslať teraz">${escapeHtml(m.label)} ↗</button>`
+        ).join('')}
       </div>
     </div>`;
   }).join('');

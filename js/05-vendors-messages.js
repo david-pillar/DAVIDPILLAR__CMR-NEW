@@ -178,7 +178,11 @@ function getExpectedMessageStatus(project){
 function getProjectsWithMissingMessages(){
   return DATA.projects
     .filter(p=>!p.archived)
-    .map(p=>({ project:p, missing: getExpectedMessageStatus(p).filter(i=>!i.sent) }))
+    .map(p=>{
+      const missingExpected = getExpectedMessageStatus(p).filter(i=>!i.sent).map(i=>({...i, custom:false}));
+      const missingCustom = (p.customMessages||[]).filter(i=>!i.done).map(i=>({ key:i.id, label:i.label, sent:false, custom:true }));
+      return { project:p, missing: missingExpected.concat(missingCustom) };
+    })
     .filter(x=>x.missing.length>0);
 }
 function renderMessageStatusIndicator(project){
@@ -194,18 +198,17 @@ function renderMessageStatusIndicator(project){
   }
 
   const expected = getExpectedMessageStatus(project);
-  if(!expected.length){
+  const custom = project.customMessages || [];
+  const totalCount = expected.length + custom.length;
+  const missing = expected.filter(i=>!i.sent).map(i=>i.label).concat(custom.filter(i=>!i.done).map(i=>i.label));
+  if(!totalCount){
     el.textContent = '💬 Správy: nič sa nečaká';
     el.className = 'pr-indicator state-none';
-    renderMessageChecklist(project);
-    return;
-  }
-  const missing = expected.filter(i=>!i.sent);
-  if(!missing.length){
-    el.textContent = `💬 Správy: všetky odoslané (${expected.length}/${expected.length})`;
+  }else if(!missing.length){
+    el.textContent = `💬 Správy: všetky odoslané (${totalCount}/${totalCount})`;
     el.className = 'pr-indicator state-done';
   }else{
-    el.textContent = `💬 Chýba odoslať: ${missing.map(m=>m.label).join(', ')}`;
+    el.textContent = `💬 Chýba odoslať: ${missing.join(', ')}`;
     el.className = 'pr-indicator state-partial';
   }
   renderMessageChecklist(project);
@@ -213,18 +216,69 @@ function renderMessageStatusIndicator(project){
 /* ---- Ručné odkliknutie odoslanej správy priamo v zákazke — checklist-style, pre prípad,
    že si klientovi napísal/zavolal mimo appky (SMS, telefonicky, osobne), nie cez WhatsApp
    tlačidlo. Zdieľa rovnaké dáta (project.sentMessages) ako "Poslať teraz" na Dashboarde,
-   takže sa panel "Chýbajúce správy" aktualizuje okamžite v oboch smeroch. ---- */
+   takže sa panel "Chýbajúce správy" aktualizuje okamžite v oboch smeroch.
+   Okrem 3 automatických typov si sem vieš dopísať aj vlastné správy (project.customMessages)
+   — pre prípad keď posielaš aj iné typy správ, ktoré appka sama nevie predpokladať. ---- */
 function renderMessageChecklist(project){
   const el = document.getElementById('pr-message-checklist');
   if(!el) return;
   const expected = getExpectedMessageStatus(project);
-  if(!expected.length){ el.innerHTML = ''; return; }
-  el.innerHTML = `<p class="row-sub" style="margin:10px 0 2px;">Odkliknúť ako odoslané (aj keď si písal mimo appky):</p>` +
-    expected.map(item=>`
+  const custom = project.customMessages || [];
+
+  const expectedHtml = expected.map(item=>`
     <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:${item.sent?'var(--text-faint)':'var(--text)'};margin:0;${item.sent?'text-decoration:line-through;':''}">
       <input type="checkbox" style="width:auto;" ${item.sent?'checked':''} onchange="toggleExpectedMessageSent('${project.id}','${item.key}')">
       <span>${escapeHtml(item.label)}</span>
     </label>`).join('');
+
+  const customHtml = custom.map(item=>`
+    <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:${item.done?'var(--text-faint)':'var(--text)'};margin:0;${item.done?'text-decoration:line-through;':''}">
+      <input type="checkbox" style="width:auto;" ${item.done?'checked':''} onchange="toggleCustomMessage('${project.id}','${item.id}')">
+      <span style="flex:1;">${escapeHtml(item.label)}</span>
+      <button class="icon-btn" style="width:22px;height:22px;font-size:12px;" onclick="deleteCustomMessage('${project.id}','${item.id}')" title="Odstrániť">×</button>
+    </label>`).join('');
+
+  const addRowHtml = `<div style="display:flex;gap:8px;margin-top:6px;">
+    <input id="pr-custom-message-new" placeholder="Ďalšia správa (napr. Info o parkovaní)" style="flex:1;font-size:13px;" onkeydown="if(event.key==='Enter'){event.preventDefault();addCustomMessage();}">
+    <button class="btn ghost small" onclick="addCustomMessage()">+ Pridať</button>
+  </div>`;
+
+  const introHtml = (expected.length || custom.length) ? `<p class="row-sub" style="margin:10px 0 2px;">Odkliknúť ako odoslané (aj keď si písal mimo appky):</p>` : '';
+  el.innerHTML = introHtml + expectedHtml + customHtml + addRowHtml;
+}
+async function addCustomMessage(){
+  const id = document.getElementById('pr-id').value;
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project){ showToast('Najprv zákazku ulož, potom pridaj vlastnú správu'); return; }
+  const input = document.getElementById('pr-custom-message-new');
+  const text = input.value.trim();
+  if(!text) return;
+  if(!project.customMessages) project.customMessages = [];
+  project.customMessages.push({ id: uid(), label: text, done:false });
+  input.value = '';
+  await saveKey('projects', DATA.projects);
+  renderMessageStatusIndicator(project);
+  if(typeof renderMissingMessages==='function') renderMissingMessages();
+  if(typeof updateNavBadges==='function') updateNavBadges();
+}
+async function toggleCustomMessage(projectId, itemId){
+  const project = DATA.projects.find(p=>p.id===projectId);
+  if(!project) return;
+  const item = (project.customMessages||[]).find(i=>i.id===itemId);
+  if(item) item.done = !item.done;
+  await saveKey('projects', DATA.projects);
+  renderMessageStatusIndicator(project);
+  if(typeof renderMissingMessages==='function') renderMissingMessages();
+  if(typeof updateNavBadges==='function') updateNavBadges();
+}
+async function deleteCustomMessage(projectId, itemId){
+  const project = DATA.projects.find(p=>p.id===projectId);
+  if(!project) return;
+  project.customMessages = (project.customMessages||[]).filter(i=>i.id!==itemId);
+  await saveKey('projects', DATA.projects);
+  renderMessageStatusIndicator(project);
+  if(typeof renderMissingMessages==='function') renderMissingMessages();
+  if(typeof updateNavBadges==='function') updateNavBadges();
 }
 var MESSAGE_KEY_LABELS = { potvrdenie:'Potvrdenie rezervácie', pripomienka:'Pripomienka pred natáčaním', dakujem:'Poďakovanie po odovzdaní' };
 async function toggleExpectedMessageSent(projectId, key){
