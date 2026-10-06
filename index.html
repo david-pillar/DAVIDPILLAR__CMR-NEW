@@ -103,6 +103,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8H3v13h18V8z"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
         <span>Archív</span>
       </div>
+      <div class="nav-item" data-view="backupp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 17h.01M10 17h.01"/><path d="M12 3v7"/><path d="M8.5 6.5 12 10l3.5-3.5"/></svg>
+        <span>BACKUPP</span>
+        <span class="nav-badge" id="navBadgeBackupp" style="display:none;"></span>
+      </div>
       <div class="nav-item" data-view="map">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
         <span>Mapa</span>
@@ -690,6 +695,35 @@
       <div class="archive-grid" id="archiveArchivedYears"></div>
     </div>
 
+    <!-- BACKUPP -->
+    <div class="view" id="view-backupp">
+      <div class="topbar">
+        <div><h1 class="page-title">BACKUPP</h1><div class="page-sub">Kde sú zálohy dát jednotlivých zákaziek — zákazky bez zálohy alebo len s 1 kópiou sú zvýraznené</div></div>
+      </div>
+
+      <div class="grid-stats" id="backuppStatsGrid"></div>
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <button class="btn ghost small backupp-filter-btn active" onclick="setBackuppFilter('all', this)">Všetky</button>
+          <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('risk', this)">⚠ Rizikové (0–1 kópia)</button>
+          <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('nezalohovane', this)">Nezálohované</button>
+          <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('ciastocne', this)">Čiastočne</button>
+          <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('zalohovane', this)">Zálohované</button>
+        </div>
+        <div class="backupp-toolbar">
+          <div class="search-bar" style="margin:0;flex:1;min-width:200px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input id="backuppSearch" placeholder="Hľadať zákazku, klienta, priečinok..." oninput="renderBackupp()">
+          </div>
+          <select id="backuppYear" onchange="renderBackupp()" style="width:auto;min-width:130px;"><option value="">Všetky roky</option></select>
+          <label class="backupp-check"><input type="checkbox" id="backuppShowUnshot" onchange="toggleBackuppShowUnshot()"> Aj nenakrútené zákazky</label>
+        </div>
+      </div>
+
+      <div class="panel"><div id="backuppList"></div></div>
+    </div>
+
     <!-- MAP -->
     <div class="view" id="view-map">
       <div class="topbar">
@@ -1183,6 +1217,50 @@
   </div>
 </div>
 
+<!-- MODAL: backupp (záloha zákazky) -->
+<div class="modal-overlay" id="modal-backupp">
+  <div class="modal">
+    <div class="modal-head"><h3 id="backuppModalTitle">Záloha</h3><button class="modal-close" onclick="closeModal('modal-backupp')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="bk-project-id">
+      <div class="row-sub" id="bk-project-sub" style="margin-top:-4px;"></div>
+      <div><label>Kde je záloha</label>
+        <div class="backupp-loc-row">
+          <label class="backupp-check"><input type="checkbox" class="bk-loc-check" value="disk"> 💽 Disk</label>
+          <label class="backupp-check"><input type="checkbox" class="bk-loc-check" value="nas"> 🗄️ NAS</label>
+          <label class="backupp-check"><input type="checkbox" class="bk-loc-check" value="cloud"> ☁️ Cloud</label>
+        </div>
+      </div>
+      <div><label>Presná cesta / názov priečinka</label><input id="bk-path" placeholder="napr. 2026 PRODUCTION __ BACKUPP / Svadba Novákovci"></div>
+      <div class="field-row">
+        <div><label>Počet kópií</label><input id="bk-copies" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div><label>Stav</label>
+          <select id="bk-status">
+            <option value="zalohovane">Zálohované</option>
+            <option value="ciastocne">Čiastočne</option>
+            <option value="nezalohovane">Nezálohované</option>
+          </select>
+        </div>
+      </div>
+      <div id="bk-hint" class="backupp-hint"></div>
+      <div class="field-row">
+        <div><label>Dátum poslednej zálohy</label>
+          <div style="display:flex;gap:6px;"><input id="bk-lastBackup" type="date" style="flex:1;min-width:0;"><button type="button" class="btn ghost small" onclick="backuppSetToday()">Dnes</button></div>
+        </div>
+        <div><label>Veľkosť dát</label>
+          <div style="display:flex;gap:6px;"><input id="bk-size" type="number" min="0" step="any" inputmode="decimal" placeholder="napr. 320" style="flex:1;min-width:0;">
+            <select id="bk-size-unit" style="width:auto;"><option value="GB">GB</option><option value="TB">TB</option></select></div>
+        </div>
+      </div>
+      <div><label>Poznámka</label><textarea id="bk-note" placeholder="napr. RAW len na NAS, export aj v cloude..."></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn danger small" id="bk-clear" onclick="clearBackupp()">Vymazať záznam</button>
+      <button class="btn" onclick="saveBackupp()">Uložiť</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: expense -->
 <div class="modal-overlay" id="modal-expense">
   <div class="modal">
@@ -1464,6 +1542,7 @@
 <script src="js/18-invoices-crud.js"></script>
 <script src="js/19-init-autobackup.js"></script>
 <script src="js/20-slovakia-map.js"></script>
+<script src="js/21-backupp.js"></script>
 <datalist id="vendor-photographers-list"></datalist>
 <datalist id="vendor-bands-list"></datalist>
 </body>

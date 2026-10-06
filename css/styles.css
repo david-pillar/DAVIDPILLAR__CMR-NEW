@@ -832,3 +832,65 @@
     .list-row, .missing-msg-row{flex-wrap:wrap;row-gap:6px;}
     .row-title{white-space:normal;overflow-wrap:break-word;text-overflow:clip;}
   }
+
+  /* ===================== BACKUPP (zálohy zákaziek) ===================== */
+  .btn.ghost.small.backupp-filter-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,80,2,.4);}
+  .backupp-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .backupp-toolbar .search-bar{max-width:420px;}
+  label.backupp-check{
+    display:inline-flex;align-items:center;gap:7px;margin:0;cursor:pointer;
+    text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);
+  }
+  label.backupp-check input[type=checkbox]{width:16px;height:16px;padding:0;margin:0;accent-color:var(--accent);flex:none;}
+  .backupp-loc-row{display:flex;gap:16px;flex-wrap:wrap;padding:4px 0;}
+
+  .stat-card.backupp-stat-warn{border-color:#ff8a00;background:linear-gradient(135deg, rgba(255,138,0,.12), var(--surface));}
+  .stat-card.backupp-stat-warn .stat-num{color:#ff9a1f;}
+
+  .backupp-row{
+    display:grid;grid-template-columns:minmax(0,2.4fr) minmax(0,1.3fr) 60px 110px 90px 130px;gap:12px;align-items:center;
+    padding:12px 12px;border:1px solid transparent;border-bottom-color:var(--surface-3);border-left:3px solid transparent;
+    cursor:pointer;transition:background .15s var(--ease);
+  }
+  .backupp-row:last-child{border-bottom-color:transparent;}
+  .backupp-row:hover{background:var(--surface-hover);}
+  .backupp-row.backupp-risk-none{
+    background:linear-gradient(90deg, rgba(255,43,43,.14), rgba(255,43,43,.03));
+    border-left-color:#ff2b2b;border-radius:6px;margin-bottom:4px;
+  }
+  .backupp-row.backupp-risk-single{
+    background:linear-gradient(90deg, rgba(255,138,0,.14), rgba(255,138,0,.03));
+    border-left-color:#ff8a00;border-radius:6px;margin-bottom:4px;
+  }
+  .backupp-row.backupp-risk-none:hover{background:rgba(255,43,43,.2);}
+  .backupp-row.backupp-risk-single:hover{background:rgba(255,138,0,.2);}
+  .backupp-cell{min-width:0;}
+  .backupp-lbl{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+  .backupp-val{font-size:13px;font-family:'JetBrains Mono',monospace;}
+  .backupp-copies-none{color:#ff4d4d;font-weight:700;}
+  .backupp-copies-single{color:#ff9a1f;font-weight:700;}
+  .backupp-copies-ok{color:#4cbf7d;font-weight:700;}
+  .backupp-locs{display:flex;gap:4px;flex-wrap:wrap;}
+  .backupp-path{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-dim);margin-top:4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .backupp-note{margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .backupp-status{display:flex;flex-direction:column;align-items:flex-start;gap:5px;}
+  .pill.backupp-st-zalohovane{background:rgba(76,191,125,.22);color:#4cbf7d;}
+  .pill.backupp-st-ciastocne{background:rgba(224,180,40,.24);color:#d9a91c;}
+  .pill.backupp-st-nezalohovane{background:rgba(224,82,79,.22);color:#e0524f;}
+  .backupp-warn{font-size:11px;font-weight:700;white-space:nowrap;}
+  .backupp-warn-none{color:#ff4d4d;}
+  .backupp-warn-single{color:#ff9a1f;}
+
+  .backupp-hint{font-size:12px;padding:8px 10px;border-radius:7px;line-height:1.4;}
+  .backupp-hint-none{background:rgba(255,43,43,.12);color:#ff5a5a;}
+  .backupp-hint-single{background:rgba(255,138,0,.12);color:#ff9a1f;}
+  .backupp-hint-ok{background:rgba(76,191,125,.12);color:#4cbf7d;}
+
+  @media (max-width:900px){
+    .backupp-row{grid-template-columns:1fr 1fr 1fr;row-gap:10px;}
+    .backupp-row .backupp-main{grid-column:1 / -1;}
+    .backupp-row .backupp-status{grid-column:1 / -1;flex-direction:row;align-items:center;}
+  }

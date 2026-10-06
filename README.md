@@ -28,6 +28,8 @@ js/
   17-import.js            — import z Google Formulára a z textu (Pripomienky)
   18-invoices-crud.js     — faktúry, DPH prepočet
   19-init-autobackup.js   — automatická záloha, klávesové skratky, spustenie appky
+  20-slovakia-map.js      — Mapa natáčaní
+  21-backupp.js           — BACKUPP: kde sú zálohy dát každej zákazky (disk/NAS/cloud, kópie, stav)
 ```
 
 **Dôležité:** súbory v `js/` sa načítavajú ako klasické `<script src="...">` (nie ES moduly) a **musia zostať v tomto poradí** — neskoršie súbory sa spoliehajú na premenné a funkcie definované v skorších (napr. `DATA`, `PRICING`, `uid()`).
