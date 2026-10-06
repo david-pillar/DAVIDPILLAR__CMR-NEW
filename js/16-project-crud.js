@@ -318,7 +318,14 @@ function setBackupFields(b){
   updateBackupLight();
 }
 function updateBackupLight(){
-  const n = backupCount(getBackupFields());
-  document.getElementById('pr-backup-light').style.background = backupColor(n);
-  document.getElementById('pr-backup-label').textContent = n ? `💾 Záloha na ${n}/3 miestach` : '💾 Záloha: nikde';
+  const b = getBackupFields();
+  const n = backupCount(b);
+  const color = backupColor(n);
+  document.querySelectorAll('#pr-backup-light i').forEach((lamp,i)=>{
+    lamp.style.background = i<n ? color : '#333';
+    lamp.style.boxShadow = i<n ? `0 0 8px ${color}` : 'none';
+  });
+  const names = [b.hdd && 'HDD '+b.hdd, b.hddCopy && 'KÓPIA HDD '+b.hddCopy, b.ssd && 'SSD '+b.ssd].filter(Boolean);
+  const verdict = ['nikde','POZOR — iba na 1 mieste','na 2 miestach — chýba ešte jedna','na 3 miestach ✓'][n];
+  document.getElementById('pr-backup-label').textContent = `💾 Záloha: ${verdict}${names.length?' ('+names.join(' · ')+')':''}`;
 }
