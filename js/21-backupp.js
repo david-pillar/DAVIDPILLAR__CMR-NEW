@@ -37,6 +37,7 @@ function projectHasFootage(p){
 // 'none' = žiadna záloha (červená), 'single' = len 1 kópia (oranžová), 'ok' = 2+ kópie
 function backupRisk(b){
   if(!b) return 'none';
+  if(b.archiveBackup) return 'ok';
   const copies = Number(b.copies)||0;
   if(b.status === 'nezalohovane' || copies <= 0) return 'none';
   if(copies === 1) return 'single';
@@ -46,6 +47,7 @@ function backupRisk(b){
 // Semafor: počet skupín (HDD / HDD KÓPIA / SSD), kde je záloha. 0 červená, 1 oranžová, 2 žltá, 3 zelená.
 function driveCount(b){
   if(!b) return 0;
+  if(b.archiveBackup) return 3;   // archivované = hotové, zelená
   if(!b.drives) return Math.min(3, Number(b.copies)||0);   // staré záznamy bez diskov
   // Rovnaký disk v HDD aj v HDD KÓPII je fyzicky jedno miesto — nerátame ho dvakrát.
   return new Set([b.drives.hdd,b.drives.hddCopy,b.drives.ssd].filter(Boolean)).size;
@@ -164,9 +166,9 @@ function renderBackupp(){
       ? b.locations.map(id=>{ const l = BACKUP_LOCATIONS.find(x=>x.id===id); return l ? `<span class="tag-pill">${l.icon} ${l.label}</span>` : ''; }).join(' ')
       : '<span class="row-sub">—</span>';
     const copies = b ? (Number(b.copies)||0) : 0;
-    const warn = r==='none' ? '<span class="backupp-warn backupp-warn-none">⚠ Bez zálohy</span>'
+    const warn = (b&&b.archiveBackup) ? '' : r==='none' ? '<span class="backupp-warn backupp-warn-none">⚠ Bez zálohy</span>'
                : r==='single' ? '<span class="backupp-warn backupp-warn-single">⚠ Len 1 kópia</span>' : '';
-    return `<div class="backupp-row backupp-risk-${r}" onclick="openBackuppModal('${p.id}')">
+    return `<div class="backupp-row backupp-risk-${r}${b&&b.archiveBackup?' backupp-archived':''}" onclick="openBackuppModal('${p.id}')">
       <div class="backupp-cell backupp-main">
         <div class="row-title">${escapeHtml(p.title||'Bez názvu')}${p.archived?' 🗄️':''}</div>
         <div class="row-sub">${client?escapeHtml(client.name)+' · ':''}${fmtDate(p.deadline)}</div>

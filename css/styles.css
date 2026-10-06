@@ -898,3 +898,6 @@
 .bk-semafor{display:flex;align-items:center;gap:10px;}
 .bk-light{display:inline-flex;gap:5px;padding:6px 9px;background:#161616;border-radius:20px;border:1px solid var(--border);}
 .bk-light i{width:14px;height:14px;border-radius:50%;background:#333;display:block;}
+
+.backupp-row.backupp-archived{background:linear-gradient(90deg, rgba(63,185,80,.16), rgba(63,185,80,.04));border-left-color:#3fb950;border-radius:6px;margin-bottom:4px;}
+.backupp-row.backupp-archived:hover{background:rgba(63,185,80,.22);}
