@@ -142,13 +142,8 @@ function renderBackupp(){
     return true;
   });
 
-  // Najrizikovejšie hore, potom podľa termínu (najnovšie prvé)
-  const riskOrder = { none:0, single:1, ok:2 };
-  list.sort((a,b)=>{
-    const ra = riskOrder[backupRisk(getProjectBackup(a.id))], rb = riskOrder[backupRisk(getProjectBackup(b.id))];
-    if(ra!==rb) return ra-rb;
-    return (b.deadline||'').localeCompare(a.deadline||'');
-  });
+  // Zoradené podľa dátumu zákazky — najnovšie hore
+  list.sort((a,b)=>(b.deadline||'').localeCompare(a.deadline||''));
 
   if(!list.length){
     listEl.innerHTML = `<div class="empty">${scope.length ? 'Žiadna zákazka nezodpovedá filtru.' : '💾 Zatiaľ tu nie sú žiadne nakrútené zákazky.'}</div>`;
