@@ -126,8 +126,7 @@ function renderBackupp(){
   let list = scope.filter(p=>{
     const b = getProjectBackup(p.id);
     const r = backupRisk(b);
-    if(backuppFilter==='archived') return !!p.archived;
-    if(backuppFilter!=='archived' && p.archived && backuppFilter!=='all') return false;
+    if(backuppFilter==='archived' && !(b && b.archiveBackup)) return false;
     if(backuppFilter==='risk' && r==='ok') return false;
     if(['zalohovane','ciastocne','nezalohovane'].includes(backuppFilter)){
       const st = b ? (b.status||'nezalohovane') : 'nezalohovane';
@@ -178,8 +177,8 @@ function renderBackupp(){
       <div class="backupp-cell"><div class="backupp-lbl">Kópie</div><div class="backupp-val backupp-copies-${r}">${copies}×</div></div>
       <div class="backupp-cell"><div class="backupp-lbl">Posledná záloha</div><div class="backupp-val">${b&&b.lastBackup?fmtDate(b.lastBackup):'—'}</div></div>
       <div class="backupp-cell"><div class="backupp-lbl">Veľkosť</div><div class="backupp-val">${fmtBackupSize(b&&b.sizeGB)}</div></div>
+      <div class="backupp-cell"><div class="backupp-lbl">Archivované</div><div class="backupp-val">${b&&b.archiveBackup ? '<span class="tag-pill" style="background:rgba(76,191,125,.22);color:#4cbf7d;">🗄️ Áno</span>' : '—'}</div></div>
       <div class="backupp-cell backupp-status">
-        ${p.archived ? '<span class="tag-pill">🗄️ Dokončená a archivovaná</span>' : ''}
         ${driveLampsHtml(driveCount(b))}
         ${b&&b.sdBacked ? '<span class="tag-pill">💾 SD ✓</span>' : '<span class="backupp-warn backupp-warn-none">💾 SD nezálohované</span>'}
         <span class="pill backupp-st-${st}">${BACKUP_STATUS_LABELS[st]}</span>
@@ -216,6 +215,7 @@ function openBackuppModal(projectId){
   }
   document.getElementById('bk-note').value = b.note || '';
   document.getElementById('bk-sd').checked = !!b.sdBacked;
+  document.getElementById('bk-archive').checked = !!b.archiveBackup;
   document.getElementById('bk-clear').style.display = getProjectBackup(projectId) ? 'inline-flex' : 'none';
   if(b.drives) updateBackuppDrives(); else { updateBackuppModalHint(); document.getElementById('bk-light-label').textContent='Záloha: nikde'; document.querySelectorAll('#bk-light i').forEach(l=>{l.style.background='';l.style.boxShadow='';}); }
   openModal('modal-backupp');
@@ -251,6 +251,7 @@ async function saveBackupp(){
     sizeGB: unit==='TB' ? +(sizeVal*1000).toFixed(2) : sizeVal,
     note: document.getElementById('bk-note').value.trim(),
     sdBacked: document.getElementById('bk-sd').checked,
+    archiveBackup: document.getElementById('bk-archive').checked,
     updatedAt: new Date().toISOString()
   };
   getBackupStore()[projectId] = record;
@@ -275,7 +276,7 @@ async function clearBackupp(){
 
 /* ---- Upozornenie na Dashboarde: od dňa zákazky svieti, kým nie sú SD karty zálohované ---- */
 function sdPendingProjects(){
-  return DATA.projects.filter(p=>!p.archived && projectHasFootage(p) && !(getProjectBackup(p.id)||{}).sdBacked);
+  return DATA.projects.filter(p=>!p.archived && projectHasFootage(p) && !(getProjectBackup(p.id)||{}).sdBacked && !(getProjectBackup(p.id)||{}).archiveBackup);
 }
 function renderSdBackupBanner(){
   const el = document.getElementById('sdBackupBanner');
@@ -296,7 +297,7 @@ function updateBackuppNavBadge(){
   const badge = document.getElementById('navBadgeBackupp');
   if(!badge) return;
   renderSdBackupBanner();
-  const n = DATA.projects.filter(p=>!p.archived && projectHasFootage(p) && (driveCount(getProjectBackup(p.id))<2 || !(getProjectBackup(p.id)||{}).sdBacked)).length;
+  const n = DATA.projects.filter(p=>!p.archived && !(getProjectBackup(p.id)||{}).archiveBackup && projectHasFootage(p) && (driveCount(getProjectBackup(p.id))<2 || !(getProjectBackup(p.id)||{}).sdBacked)).length;
   badge.textContent = n;
   badge.style.display = n>0 ? 'inline-flex' : 'none';
 }

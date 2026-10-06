@@ -848,7 +848,7 @@
   .stat-card.backupp-stat-warn .stat-num{color:#ff9a1f;}
 
   .backupp-row{
-    display:grid;grid-template-columns:minmax(0,2.4fr) minmax(0,1.3fr) 60px 110px 90px 130px;gap:12px;align-items:center;
+    display:grid;grid-template-columns:minmax(0,2.4fr) minmax(0,1.3fr) 60px 110px 90px 90px 130px;gap:12px;align-items:center;
     padding:12px 12px;border:1px solid transparent;border-bottom-color:var(--surface-3);border-left:3px solid transparent;
     cursor:pointer;transition:background .15s var(--ease);
   }
@@ -890,7 +890,7 @@
   .backupp-hint-ok{background:rgba(76,191,125,.12);color:#4cbf7d;}
 
   @media (max-width:900px){
-    .backupp-row{grid-template-columns:1fr 1fr 1fr;row-gap:10px;}
+    .backupp-row{grid-template-columns:1fr 1fr 1fr 1fr;row-gap:10px;}
     .backupp-row .backupp-main{grid-column:1 / -1;}
     .backupp-row .backupp-status{grid-column:1 / -1;flex-direction:row;align-items:center;}
   }
