@@ -56,7 +56,7 @@ function driveLampsHtml(n){
   return `<span class="bk-light">${[0,1,2].map(i=>`<i style="${i<n?`background:${c};box-shadow:0 0 8px ${c};`:''}"></i>`).join('')}</span>`;
 }
 function driveNames(b){
-  return b && b.drives ? [b.drives.hdd, b.drives.hddCopy && 'KÓPIA '+b.drives.hddCopy, b.drives.ssd].filter(Boolean) : [];
+  return b && b.drives ? [b.drives.hdd, b.drives.hddCopy && 'KÓPIA: '+b.drives.hddCopy, b.drives.ssd].filter(Boolean) : [];
 }
 function updateBackuppDrives(){
   const d = { hdd:document.getElementById('bk-hdd').value, hddCopy:document.getElementById('bk-hddcopy').value, ssd:document.getElementById('bk-ssd').value };
@@ -67,7 +67,7 @@ function updateBackuppDrives(){
   });
   const names = driveNames({drives:d});
   document.getElementById('bk-light-label').textContent = 'Záloha: ' + ['nikde','POZOR — iba na 1 mieste','na 2 miestach — chýba ešte jedna','na 3 miestach ✓'][n] + (names.length?' ('+names.join(' · ')+')':'');
-  if(d.hdd && d.hdd===d.hddCopy) document.getElementById('bk-light-label').textContent += ' ⚠ HDD a jeho kópia sú rovnaký disk — počíta sa ako 1 miesto';
+  if(d.hdd && d.hdd===d.hddCopy) document.getElementById('bk-light-label').textContent += ' ⚠ hlavná záloha a kópia sú rovnaký disk — počíta sa ako 1 miesto';
   document.getElementById('bk-copies').value = n;
   document.getElementById('bk-status').value = n===0 ? 'nezalohovane' : (n===3 ? 'zalohovane' : 'ciastocne');
   updateBackuppModalHint();
@@ -126,6 +126,8 @@ function renderBackupp(){
   let list = scope.filter(p=>{
     const b = getProjectBackup(p.id);
     const r = backupRisk(b);
+    if(backuppFilter==='archived') return !!p.archived;
+    if(backuppFilter!=='archived' && p.archived && backuppFilter!=='all') return false;
     if(backuppFilter==='risk' && r==='ok') return false;
     if(['zalohovane','ciastocne','nezalohovane'].includes(backuppFilter)){
       const st = b ? (b.status||'nezalohovane') : 'nezalohovane';
@@ -177,6 +179,7 @@ function renderBackupp(){
       <div class="backupp-cell"><div class="backupp-lbl">Posledná záloha</div><div class="backupp-val">${b&&b.lastBackup?fmtDate(b.lastBackup):'—'}</div></div>
       <div class="backupp-cell"><div class="backupp-lbl">Veľkosť</div><div class="backupp-val">${fmtBackupSize(b&&b.sizeGB)}</div></div>
       <div class="backupp-cell backupp-status">
+        ${p.archived ? '<span class="tag-pill">🗄️ Dokončená a archivovaná</span>' : ''}
         ${driveLampsHtml(driveCount(b))}
         ${b&&b.sdBacked ? '<span class="tag-pill">💾 SD ✓</span>' : '<span class="backupp-warn backupp-warn-none">💾 SD nezálohované</span>'}
         <span class="pill backupp-st-${st}">${BACKUP_STATUS_LABELS[st]}</span>
@@ -293,7 +296,7 @@ function updateBackuppNavBadge(){
   const badge = document.getElementById('navBadgeBackupp');
   if(!badge) return;
   renderSdBackupBanner();
-  const n = DATA.projects.filter(p=>projectHasFootage(p) && (driveCount(getProjectBackup(p.id))<2 || !(getProjectBackup(p.id)||{}).sdBacked)).length;
+  const n = DATA.projects.filter(p=>!p.archived && projectHasFootage(p) && (driveCount(getProjectBackup(p.id))<2 || !(getProjectBackup(p.id)||{}).sdBacked)).length;
   badge.textContent = n;
   badge.style.display = n>0 ? 'inline-flex' : 'none';
 }

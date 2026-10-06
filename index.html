@@ -709,6 +709,7 @@
           <button class="btn ghost small backupp-filter-btn active" onclick="setBackuppFilter('all', this)">Všetky</button>
           <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('risk', this)">⚠ Rizikové (0–1 kópia)</button>
           <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('nezalohovane', this)">Nezálohované</button>
+          <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('archived', this)">🗄️ Archivované</button>
           <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('ciastocne', this)">Čiastočne</button>
           <button class="btn ghost small backupp-filter-btn" onclick="setBackuppFilter('zalohovane', this)">Zálohované</button>
         </div>
@@ -1227,8 +1228,8 @@
       <div class="row-sub" id="bk-project-sub" style="margin-top:-4px;"></div>
       <div class="bk-semafor"><span id="bk-light" class="bk-light"><i></i><i></i><i></i></span><span id="bk-light-label" class="row-sub">Záloha: nikde</span></div>
       <div class="field-row">
-        <div><label>💽 HDD</label><select id="bk-hdd" class="bk-drive"><option value="">— nie je —</option><option value="HDD 1">HDD 1</option><option value="HDD 2">HDD 2</option><option value="HDD 3">HDD 3</option></select></div>
-        <div><label>💽 HDD KÓPIA BACKUPP</label><select id="bk-hddcopy" class="bk-drive"><option value="">— nie je —</option><option value="HDD 1">HDD 1</option><option value="HDD 2">HDD 2</option><option value="HDD 3">HDD 3</option></select></div>
+        <div><label>💽 HDD 2026 (hlavná záloha)</label><select id="bk-hdd" class="bk-drive"><option value="">— nie je —</option><option value="HDD 2026 – 1">HDD 2026 – 1</option><option value="HDD 2026 – 2">HDD 2026 – 2</option></select></div>
+        <div><label>💽 KÓPIA (HDD BACKUPP / LaCie)</label><select id="bk-hddcopy" class="bk-drive"><option value="">— nie je —</option><option value="HDD BACKUPP">HDD BACKUPP</option><option value="LaCie 1">LaCie 1</option><option value="LaCie 2">LaCie 2</option></select></div>
         <div><label>⚡ SSD</label><select id="bk-ssd" class="bk-drive"><option value="">— nie je —</option><option value="SSD I">SSD I</option><option value="SSD II">SSD II</option><option value="SSD III">SSD III</option><option value="SSD IV">SSD IV</option></select></div>
       </div>
       <div><label>Presná cesta / názov priečinka</label><input id="bk-path" placeholder="napr. 2026 PRODUCTION __ BACKUPP / Svadba Novákovci"></div>
