@@ -199,7 +199,7 @@ function renderProjects(){
     return `<div class="kcard type-${type}" onclick="openProjectModal('${p.id}')">
       ${typeTag}
       <div class="kcard-top">
-        <span class="kcard-date ${dateClass}">${dateLabel}</span>
+        <span class="kcard-date ${dateClass}"><span title="Záloha: ${backupCount(p.backup)}/3" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${backupColor(backupCount(p.backup))};margin-right:6px;"></span>${dateLabel}</span>
         <span style="display:flex;align-items:center;gap:6px;">
           ${p.budget?`<span class="kcard-budget">${fmtMoney(p.budget)}</span>`:''}
           <button class="icon-btn" style="width:24px;height:24px;font-size:12px;border-radius:6px;" title="Kopírovať pre Pripomienky" onclick="copyProjectReminderSummaryById('${p.id}', event)">🔔</button>

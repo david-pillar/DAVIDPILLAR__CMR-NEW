@@ -979,6 +979,17 @@
         </div>
 
         <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span id="pr-backup-light" style="width:14px;height:14px;border-radius:50%;background:#555;display:inline-block;"></span>
+          <p class="row-sub" id="pr-backup-label" style="margin:0;">💾 Záloha: nikde</p>
+        </div>
+        <div class="field-row">
+          <div><label>HDD</label><select id="pr-backup-hdd" onchange="updateBackupLight()"><option value="">— nie je —</option><option value="1">HDD 1</option><option value="2">HDD 2</option><option value="3">HDD 3</option></select></div>
+          <div><label>HDD KÓPIA BACKUP</label><select id="pr-backup-hddcopy" onchange="updateBackupLight()"><option value="">— nie je —</option><option value="1">HDD 1</option><option value="2">HDD 2</option><option value="3">HDD 3</option></select></div>
+          <div><label>SSD</label><select id="pr-backup-ssd" onchange="updateBackupLight()"><option value="">— nie je —</option><option value="I">SSD I</option><option value="II">SSD II</option><option value="III">SSD III</option><option value="IV">SSD IV</option></select></div>
+        </div>
+
+        <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
         <p class="row-sub" style="margin:0 0 8px;">✍️ Podpis klienta (nakresli prstom/myšou, vloží sa do PDF zmluvy)</p>
         <canvas id="pr-signature-pad" width="600" height="150" style="width:100%;max-width:500px;height:130px;background:#fff;border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
         <div style="display:flex;gap:8px;margin-top:8px;">
