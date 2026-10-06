@@ -894,3 +894,7 @@
     .backupp-row .backupp-main{grid-column:1 / -1;}
     .backupp-row .backupp-status{grid-column:1 / -1;flex-direction:row;align-items:center;}
   }
+
+.bk-semafor{display:flex;align-items:center;gap:10px;}
+.bk-light{display:inline-flex;gap:5px;padding:6px 9px;background:#161616;border-radius:20px;border:1px solid var(--border);}
+.bk-light i{width:14px;height:14px;border-radius:50%;background:#333;display:block;}

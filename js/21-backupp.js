@@ -43,6 +43,36 @@ function backupRisk(b){
   return 'ok';
 }
 
+// Semafor: počet skupín (HDD / HDD KÓPIA / SSD), kde je záloha. 0 červená, 1 oranžová, 2 žltá, 3 zelená.
+function driveCount(b){
+  if(!b) return 0;
+  if(!b.drives) return Math.min(3, Number(b.copies)||0);   // staré záznamy bez diskov
+  // Rovnaký disk v HDD aj v HDD KÓPII je fyzicky jedno miesto — nerátame ho dvakrát.
+  return new Set([b.drives.hdd,b.drives.hddCopy,b.drives.ssd].filter(Boolean)).size;
+}
+function driveColor(n){ return ['#e0524f','#f0922b','#e8c726','#3fb950'][n] || '#555'; }
+function driveLampsHtml(n){
+  const c = driveColor(n);
+  return `<span class="bk-light">${[0,1,2].map(i=>`<i style="${i<n?`background:${c};box-shadow:0 0 8px ${c};`:''}"></i>`).join('')}</span>`;
+}
+function driveNames(b){
+  return b && b.drives ? [b.drives.hdd, b.drives.hddCopy && 'KÓPIA '+b.drives.hddCopy, b.drives.ssd].filter(Boolean) : [];
+}
+function updateBackuppDrives(){
+  const d = { hdd:document.getElementById('bk-hdd').value, hddCopy:document.getElementById('bk-hddcopy').value, ssd:document.getElementById('bk-ssd').value };
+  const n = driveCount({drives:d});
+  const c = driveColor(n);
+  document.querySelectorAll('#bk-light i').forEach((lamp,i)=>{
+    lamp.style.background = i<n ? c : ''; lamp.style.boxShadow = i<n ? `0 0 8px ${c}` : '';
+  });
+  const names = driveNames({drives:d});
+  document.getElementById('bk-light-label').textContent = 'Záloha: ' + ['nikde','POZOR — iba na 1 mieste','na 2 miestach — chýba ešte jedna','na 3 miestach ✓'][n] + (names.length?' ('+names.join(' · ')+')':'');
+  if(d.hdd && d.hdd===d.hddCopy) document.getElementById('bk-light-label').textContent += ' ⚠ HDD a jeho kópia sú rovnaký disk — počíta sa ako 1 miesto';
+  document.getElementById('bk-copies').value = n;
+  document.getElementById('bk-status').value = n===0 ? 'nezalohovane' : (n===3 ? 'zalohovane' : 'ciastocne');
+  updateBackuppModalHint();
+}
+
 function fmtBackupSize(gb){
   const n = Number(gb);
   if(!n) return '—';
@@ -78,18 +108,19 @@ function renderBackupp(){
 
   // Štatistiky (za vybraný rok, bez ohľadu na filter stavu / hľadanie)
   const scope = base.filter(p=>!year || (p.deadline||'').startsWith(year));
-  let noneCount=0, singleCount=0, okCount=0, totalGb=0;
+  let noneCount=0, singleCount=0, twoCount=0, okCount=0, totalGb=0;
   scope.forEach(p=>{
     const b = getProjectBackup(p.id);
-    const r = backupRisk(b);
-    if(r==='none') noneCount++; else if(r==='single') singleCount++; else okCount++;
+    const n = driveCount(b);
+    if(n===0) noneCount++; else if(n===1) singleCount++; else if(n===2) twoCount++; else okCount++;
     if(b && Number(b.sizeGB)) totalGb += Number(b.sizeGB);
   });
   document.getElementById('backuppStatsGrid').innerHTML = `
     <div class="stat-card"><div class="stat-num">${scope.length}</div><div class="stat-label">Zákaziek v prehľade</div></div>
     <div class="stat-card${noneCount?' stat-danger':''}"><div class="stat-num">${noneCount}</div><div class="stat-label">Bez zálohy</div></div>
-    <div class="stat-card${singleCount?' backupp-stat-warn':''}"><div class="stat-num">${singleCount}</div><div class="stat-label">Len 1 kópia</div></div>
-    <div class="stat-card"><div class="stat-num">${okCount}</div><div class="stat-label">2+ kópie</div></div>
+    <div class="stat-card${singleCount?' backupp-stat-warn':''}"><div class="stat-num">${driveLampsHtml(1)} ${singleCount}</div><div class="stat-label">Na 1 mieste</div></div>
+    <div class="stat-card"><div class="stat-num">${driveLampsHtml(2)} ${twoCount}</div><div class="stat-label">Na 2 miestach</div></div>
+    <div class="stat-card"><div class="stat-num">${driveLampsHtml(3)} ${okCount}</div><div class="stat-label">Na 3 miestach ✓</div></div>
     <div class="stat-card"><div class="stat-num">${fmtBackupSize(totalGb)}</div><div class="stat-label">Celkom dát</div></div>`;
 
   let list = scope.filter(p=>{
@@ -126,7 +157,9 @@ function renderBackupp(){
     const r = backupRisk(b);
     const client = DATA.clients.find(c=>c.id===p.clientId);
     const st = b ? (b.status||'nezalohovane') : 'nezalohovane';
-    const locs = (b && b.locations && b.locations.length)
+    const dn = driveNames(b);
+    const locs = dn.length ? dn.map(x=>`<span class="tag-pill">💽 ${escapeHtml(x)}</span>`).join(' ')
+      : (b && b.locations && b.locations.length)
       ? b.locations.map(id=>{ const l = BACKUP_LOCATIONS.find(x=>x.id===id); return l ? `<span class="tag-pill">${l.icon} ${l.label}</span>` : ''; }).join(' ')
       : '<span class="row-sub">—</span>';
     const copies = b ? (Number(b.copies)||0) : 0;
@@ -144,6 +177,8 @@ function renderBackupp(){
       <div class="backupp-cell"><div class="backupp-lbl">Posledná záloha</div><div class="backupp-val">${b&&b.lastBackup?fmtDate(b.lastBackup):'—'}</div></div>
       <div class="backupp-cell"><div class="backupp-lbl">Veľkosť</div><div class="backupp-val">${fmtBackupSize(b&&b.sizeGB)}</div></div>
       <div class="backupp-cell backupp-status">
+        ${driveLampsHtml(driveCount(b))}
+        ${b&&b.sdBacked ? '<span class="tag-pill">💾 SD ✓</span>' : '<span class="backupp-warn backupp-warn-none">💾 SD nezálohované</span>'}
         <span class="pill backupp-st-${st}">${BACKUP_STATUS_LABELS[st]}</span>
         ${warn}
       </div>
@@ -160,8 +195,10 @@ function openBackuppModal(projectId){
   document.getElementById('bk-project-id').value = projectId;
   document.getElementById('backuppModalTitle').textContent = 'Záloha — ' + (p.title||'Bez názvu');
   document.getElementById('bk-project-sub').textContent = (client?client.name+' · ':'') + fmtDate(p.deadline);
-  const locs = b.locations || [];
-  document.querySelectorAll('.bk-loc-check').forEach(chk=>{ chk.checked = locs.includes(chk.value); });
+  const dr = b.drives || {};
+  document.getElementById('bk-hdd').value = dr.hdd || '';
+  document.getElementById('bk-hddcopy').value = dr.hddCopy || '';
+  document.getElementById('bk-ssd').value = dr.ssd || '';
   document.getElementById('bk-path').value = b.path || '';
   document.getElementById('bk-copies').value = (b.copies!=null && b.copies!=='') ? b.copies : 0;
   document.getElementById('bk-lastBackup').value = b.lastBackup || '';
@@ -175,8 +212,9 @@ function openBackuppModal(projectId){
     document.getElementById('bk-size-unit').value = 'GB';
   }
   document.getElementById('bk-note').value = b.note || '';
+  document.getElementById('bk-sd').checked = !!b.sdBacked;
   document.getElementById('bk-clear').style.display = getProjectBackup(projectId) ? 'inline-flex' : 'none';
-  updateBackuppModalHint();
+  if(b.drives) updateBackuppDrives(); else { updateBackuppModalHint(); document.getElementById('bk-light-label').textContent='Záloha: nikde'; document.querySelectorAll('#bk-light i').forEach(l=>{l.style.background='';l.style.boxShadow='';}); }
   openModal('modal-backupp');
 }
 function backuppSetToday(){
@@ -201,13 +239,15 @@ async function saveBackupp(){
   const unit = document.getElementById('bk-size-unit').value;
   const copiesRaw = parseInt(document.getElementById('bk-copies').value, 10);
   const record = {
-    locations: Array.from(document.querySelectorAll('.bk-loc-check:checked')).map(c=>c.value),
+    drives: { hdd:document.getElementById('bk-hdd').value, hddCopy:document.getElementById('bk-hddcopy').value, ssd:document.getElementById('bk-ssd').value },
+    locations: (getBackupStore()[projectId]||{}).locations || [],
     path: document.getElementById('bk-path').value.trim(),
     copies: isNaN(copiesRaw) || copiesRaw < 0 ? 0 : copiesRaw,
     lastBackup: document.getElementById('bk-lastBackup').value,
     status: document.getElementById('bk-status').value,
     sizeGB: unit==='TB' ? +(sizeVal*1000).toFixed(2) : sizeVal,
     note: document.getElementById('bk-note').value.trim(),
+    sdBacked: document.getElementById('bk-sd').checked,
     updatedAt: new Date().toISOString()
   };
   getBackupStore()[projectId] = record;
@@ -215,6 +255,7 @@ async function saveBackupp(){
   closeModal('modal-backupp');
   renderBackupp();
   updateBackuppNavBadge();
+  renderSdBackupBanner();
   showToast('Záloha uložená');
 }
 async function clearBackupp(){
@@ -229,11 +270,30 @@ async function clearBackupp(){
   showToast('Záznam o zálohe vymazaný');
 }
 
+/* ---- Upozornenie na Dashboarde: od dňa zákazky svieti, kým nie sú SD karty zálohované ---- */
+function sdPendingProjects(){
+  return DATA.projects.filter(p=>!p.archived && projectHasFootage(p) && !(getProjectBackup(p.id)||{}).sdBacked);
+}
+function renderSdBackupBanner(){
+  const el = document.getElementById('sdBackupBanner');
+  if(!el) return;
+  const list = sdPendingProjects();
+  if(!list.length){ el.style.display='none'; return; }
+  const today = toLocalISODate(new Date());
+  el.style.display = 'block';
+  el.innerHTML = `<h3 style="margin-bottom:8px;">💾 Zálohuj SD karty (${list.length})</h3>` + list.map(p=>`
+    <div class="list-row" onclick="openBackuppModal('${p.id}')"><div class="row-main">
+      <div class="row-title">${escapeHtml(p.title||'Bez názvu')}</div>
+      <div class="row-sub">${p.deadline===today?'🔴 DNES — ':''}${fmtDate(p.deadline)} · klikni a odznač po zálohovaní</div>
+    </div></div>`).join('');
+}
+
 /* ---- Odznak v menu: koľko nakrútených zákaziek nemá žiadnu zálohu alebo len 1 kópiu ---- */
 function updateBackuppNavBadge(){
   const badge = document.getElementById('navBadgeBackupp');
   if(!badge) return;
-  const n = DATA.projects.filter(p=>projectHasFootage(p) && backupRisk(getProjectBackup(p.id))!=='ok').length;
+  renderSdBackupBanner();
+  const n = DATA.projects.filter(p=>projectHasFootage(p) && (driveCount(getProjectBackup(p.id))<2 || !(getProjectBackup(p.id)||{}).sdBacked)).length;
   badge.textContent = n;
   badge.style.display = n>0 ? 'inline-flex' : 'none';
 }
@@ -256,6 +316,7 @@ function updateBackuppNavBadge(){
       }catch(e){}
     };
   }
+  document.querySelectorAll('.bk-drive').forEach(el=>el.addEventListener('change', updateBackuppDrives));
   ['bk-copies','bk-status'].forEach(id=>{
     const el = document.getElementById(id);
     if(el){ el.addEventListener('input', updateBackuppModalHint); el.addEventListener('change', updateBackuppModalHint); }

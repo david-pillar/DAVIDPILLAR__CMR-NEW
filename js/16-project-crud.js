@@ -34,7 +34,6 @@ function openProjectModal(id){
     document.getElementById('pr-delivery-link').value = p.deliveryLink||'';
     document.getElementById('pr-delivery-date').value = p.deliveryDate||'';
     document.getElementById('pr-delivery-confirmed').checked = !!p.deliveryConfirmed;
-    setBackupFields(p.backup);
     document.getElementById('pr-type').value = p.type||'';
     currentChecklist = (p.checklist || []).map(i=>({...i}));
     renderChecklist();
@@ -96,7 +95,6 @@ function openProjectModal(id){
     document.getElementById('pr-delivery-link').value = '';
     document.getElementById('pr-delivery-date').value = '';
     document.getElementById('pr-delivery-confirmed').checked = false;
-    setBackupFields(null);
     document.getElementById('pr-type').value = '';
     currentChecklist = [];
     renderChecklist();
@@ -211,8 +209,7 @@ async function saveProject(){
     signatureDataUrl: getSignatureDataUrl(),
     deliveryLink: document.getElementById('pr-delivery-link').value.trim(),
     deliveryDate: document.getElementById('pr-delivery-date').value,
-    deliveryConfirmed: document.getElementById('pr-delivery-confirmed').checked,
-    backup: getBackupFields()
+    deliveryConfirmed: document.getElementById('pr-delivery-confirmed').checked
   };
   if(type === 'svadba'){
     project.wedding = {
@@ -300,32 +297,3 @@ async function duplicateProject(){
 /* --- Import projects from pasted text (e.g. Apple Reminders) --- */
 /* ---- Google Form sync: pull questionnaire responses in as new zákazky ---- */
 
-/* ---- Semafor zálohy: počet skupín (HDD / HDD KÓPIA / SSD), kde je záloha.
-   1 = oranžová, 2 = žltá, 3 = zelená, 0 = šedá. ---- */
-function backupCount(b){ return b ? [b.hdd, b.hddCopy, b.ssd].filter(Boolean).length : 0; }
-function backupColor(n){ return ['#555','#f0922b','#e8c726','#3fb950'][n] || '#555'; }
-function getBackupFields(){
-  return {
-    hdd: document.getElementById('pr-backup-hdd').value,
-    hddCopy: document.getElementById('pr-backup-hddcopy').value,
-    ssd: document.getElementById('pr-backup-ssd').value
-  };
-}
-function setBackupFields(b){
-  document.getElementById('pr-backup-hdd').value = (b && b.hdd) || '';
-  document.getElementById('pr-backup-hddcopy').value = (b && b.hddCopy) || '';
-  document.getElementById('pr-backup-ssd').value = (b && b.ssd) || '';
-  updateBackupLight();
-}
-function updateBackupLight(){
-  const b = getBackupFields();
-  const n = backupCount(b);
-  const color = backupColor(n);
-  document.querySelectorAll('#pr-backup-light i').forEach((lamp,i)=>{
-    lamp.style.background = i<n ? color : '#333';
-    lamp.style.boxShadow = i<n ? `0 0 8px ${color}` : 'none';
-  });
-  const names = [b.hdd && 'HDD '+b.hdd, b.hddCopy && 'KÓPIA HDD '+b.hddCopy, b.ssd && 'SSD '+b.ssd].filter(Boolean);
-  const verdict = ['nikde','POZOR — iba na 1 mieste','na 2 miestach — chýba ešte jedna','na 3 miestach ✓'][n];
-  document.getElementById('pr-backup-label').textContent = `💾 Záloha: ${verdict}${names.length?' ('+names.join(' · ')+')':''}`;
-}

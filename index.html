@@ -143,6 +143,7 @@
           <button class="btn ghost small" onclick="document.getElementById('restoreFile').click()">⬆ Obnoviť zo zálohy</button>
         </div>
       </div>
+      <div class="panel panel-attention" id="sdBackupBanner" style="display:none;margin-bottom:16px;"></div>
       <div class="panel panel-attention" id="backupReminderBanner" style="display:none;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div style="font-size:13px;color:var(--text-dim);" id="backupReminderText">⚠️ Ešte si nemáš nastavenú žiadnu zálohu — nastav si ju v Nastaveniach, nech o dáta neprídeš.</div>
@@ -979,17 +980,6 @@
         </div>
 
         <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <span id="pr-backup-light" style="display:inline-flex;gap:5px;padding:6px 8px;background:#1a1a1a;border-radius:20px;border:1px solid var(--border);"><i style="width:14px;height:14px;border-radius:50%;background:#333;display:block;"></i><i style="width:14px;height:14px;border-radius:50%;background:#333;display:block;"></i><i style="width:14px;height:14px;border-radius:50%;background:#333;display:block;"></i></span>
-          <p class="row-sub" id="pr-backup-label" style="margin:0;">💾 Záloha: nikde</p>
-        </div>
-        <div class="field-row">
-          <div><label>HDD</label><select id="pr-backup-hdd" onchange="updateBackupLight()"><option value="">— nie je —</option><option value="1">HDD 1</option><option value="2">HDD 2</option><option value="3">HDD 3</option></select></div>
-          <div><label>HDD KÓPIA BACKUP</label><select id="pr-backup-hddcopy" onchange="updateBackupLight()"><option value="">— nie je —</option><option value="1">HDD 1</option><option value="2">HDD 2</option><option value="3">HDD 3</option></select></div>
-          <div><label>SSD</label><select id="pr-backup-ssd" onchange="updateBackupLight()"><option value="">— nie je —</option><option value="I">SSD I</option><option value="II">SSD II</option><option value="III">SSD III</option><option value="IV">SSD IV</option></select></div>
-        </div>
-
-        <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
         <p class="row-sub" style="margin:0 0 8px;">✍️ Podpis klienta (nakresli prstom/myšou, vloží sa do PDF zmluvy)</p>
         <canvas id="pr-signature-pad" width="600" height="150" style="width:100%;max-width:500px;height:130px;background:#fff;border-radius:8px;cursor:crosshair;touch-action:none;"></canvas>
         <div style="display:flex;gap:8px;margin-top:8px;">
@@ -1235,12 +1225,11 @@
     <div class="modal-body">
       <input type="hidden" id="bk-project-id">
       <div class="row-sub" id="bk-project-sub" style="margin-top:-4px;"></div>
-      <div><label>Kde je záloha</label>
-        <div class="backupp-loc-row">
-          <label class="backupp-check"><input type="checkbox" class="bk-loc-check" value="disk"> 💽 Disk</label>
-          <label class="backupp-check"><input type="checkbox" class="bk-loc-check" value="nas"> 🗄️ NAS</label>
-          <label class="backupp-check"><input type="checkbox" class="bk-loc-check" value="cloud"> ☁️ Cloud</label>
-        </div>
+      <div class="bk-semafor"><span id="bk-light" class="bk-light"><i></i><i></i><i></i></span><span id="bk-light-label" class="row-sub">Záloha: nikde</span></div>
+      <div class="field-row">
+        <div><label>💽 HDD</label><select id="bk-hdd" class="bk-drive"><option value="">— nie je —</option><option value="HDD 1">HDD 1</option><option value="HDD 2">HDD 2</option><option value="HDD 3">HDD 3</option></select></div>
+        <div><label>💽 HDD KÓPIA BACKUPP</label><select id="bk-hddcopy" class="bk-drive"><option value="">— nie je —</option><option value="HDD 1">HDD 1</option><option value="HDD 2">HDD 2</option><option value="HDD 3">HDD 3</option></select></div>
+        <div><label>⚡ SSD</label><select id="bk-ssd" class="bk-drive"><option value="">— nie je —</option><option value="SSD I">SSD I</option><option value="SSD II">SSD II</option><option value="SSD III">SSD III</option><option value="SSD IV">SSD IV</option></select></div>
       </div>
       <div><label>Presná cesta / názov priečinka</label><input id="bk-path" placeholder="napr. 2026 PRODUCTION __ BACKUPP / Svadba Novákovci"></div>
       <div class="field-row">
@@ -1253,6 +1242,7 @@
           </select>
         </div>
       </div>
+      <label class="backupp-check" style="margin-top:4px;"><input type="checkbox" id="bk-sd"> 💾 SD karty zálohované (prehodené z kariet na disk)</label>
       <div id="bk-hint" class="backupp-hint"></div>
       <div class="field-row">
         <div><label>Dátum poslednej zálohy</label>
