@@ -125,6 +125,16 @@ function renderBackupp(){
     <div class="stat-card"><div class="stat-num">${driveLampsHtml(3)} ${okCount}</div><div class="stat-label">Na 3 miestach ✓</div></div>
     <div class="stat-card"><div class="stat-num">${fmtBackupSize(totalGb)}</div><div class="stat-label">Celkom dát</div></div>`;
 
+  // Indikátor: svadby a stužkové vždy aspoň na 2 miestach
+  const critical = scope.filter(p=>p.type==='svadba' || p.type==='stuzkova');
+  const bad = critical.filter(p=>driveCount(getProjectBackup(p.id))<2);
+  const typeLine = t=>{ const all=critical.filter(p=>p.type===t); const ok=all.filter(p=>driveCount(getProjectBackup(p.id))>=2).length; return `${ok}/${all.length}`; };
+  const allOk = critical.length>0 && !bad.length;
+  const grid = document.getElementById('backuppStatsGrid');
+  grid.innerHTML += `<div class="stat-card backupp-critical ${allOk?'bk-crit-ok':(critical.length?'bk-crit-bad':'')}" title="${escapeHtml(bad.map(p=>p.title).join(', '))}">
+    <div class="stat-num">${critical.length ? (allOk?'✓':'⚠ '+bad.length) : '—'}</div>
+    <div class="stat-label">💍 Svadby ${typeLine('svadba')} · 🎓 Stužkové ${typeLine('stuzkova')} na 2+ miestach${bad.length?' — chýba: '+bad.slice(0,3).map(p=>escapeHtml(p.title||'')).join(', ')+(bad.length>3?'…':''):''}</div></div>`;
+
   let list = scope.filter(p=>{
     const b = getProjectBackup(p.id);
     const r = backupRisk(b);

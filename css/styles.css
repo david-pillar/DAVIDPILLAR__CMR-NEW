@@ -932,3 +932,9 @@
 .backupp-row.backupp-nossd-row{border-color:#e03c39 !important;animation:bkPulseRed 1.4s ease-in-out infinite;}
 
 .backupp-divider{margin:22px 0 12px;padding-top:12px;border-top:2px dashed var(--text-faint);font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-dim);}
+
+.stat-card.backupp-critical{grid-column:span 2;}
+.stat-card.bk-crit-ok{border-color:#3fb950;background:rgba(63,185,80,.14);}
+.stat-card.bk-crit-ok .stat-num{color:#4cbf7d;}
+.stat-card.bk-crit-bad{border-color:#e03c39;background:rgba(224,60,57,.16);}
+.stat-card.bk-crit-bad .stat-num{color:#ff5a5a;}
