@@ -927,3 +927,8 @@
 .backupp-ok{font-size:11px;font-weight:700;color:#4cbf7d;white-space:nowrap;}
 .backupp-warn{white-space:normal;}
 @media (max-width:900px){.backupp-row{grid-template-columns:1fr 1fr 1fr;}}
+
+@keyframes bkPulseRed{0%,100%{box-shadow:0 0 4px rgba(224,60,57,.4);}50%{box-shadow:0 0 20px rgba(224,60,57,1);}}
+.backupp-row.backupp-nossd-row{border-color:#e03c39 !important;animation:bkPulseRed 1.4s ease-in-out infinite;}
+
+.backupp-divider{margin:22px 0 12px;padding-top:12px;border-top:2px dashed var(--text-faint);font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-dim);}

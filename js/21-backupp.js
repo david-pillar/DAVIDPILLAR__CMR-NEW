@@ -144,6 +144,11 @@ function renderBackupp(){
 
   // Zoradené podľa dátumu zákazky — najnovšie hore
   list.sort((a,b)=>(b.deadline||'').localeCompare(a.deadline||''));
+  // Archivované (hotová archívna záloha) idú dole pod čiaru
+  const isArch = p=>{ const bb=getProjectBackup(p.id); return !!(bb && bb.archiveBackup); };
+  list = list.filter(p=>!isArch(p)).concat(list.filter(isArch));
+  const firstArchId = (list.find(isArch)||{}).id;
+  const archCount = list.filter(isArch).length;
 
   if(!list.length){
     listEl.innerHTML = `<div class="empty">${scope.length ? 'Žiadna zákazka nezodpovedá filtru.' : '💾 Zatiaľ tu nie sú žiadne nakrútené zákazky.'}</div>`;
@@ -164,7 +169,8 @@ function renderBackupp(){
     const copies = b ? (Number(b.copies)||0) : 0;
     const warn = (b&&b.archiveBackup) ? '' : r==='none' ? '<span class="backupp-warn backupp-warn-none">⚠ Bez zálohy</span>'
                : r==='single' ? '<span class="backupp-warn backupp-warn-single">⚠ Len 1 kópia</span>' : '';
-    return `<div class="backupp-row backupp-risk-${r} backupp-rowst-${st}${b&&b.archiveBackup?' backupp-archived':''}${noSsd?' backupp-nossd-row':''}" onclick="openBackuppModal('${p.id}')">
+    const divider = (p.id===firstArchId) ? `<div class="backupp-divider">🗄️ Archív (${archCount}) — hotová archívna záloha</div>` : '';
+    return `${divider}<div class="backupp-row backupp-risk-${r} backupp-rowst-${st}${b&&b.archiveBackup?' backupp-archived':''}${noSsd?' backupp-nossd-row':''}" onclick="openBackuppModal('${p.id}')">
       <div class="backupp-cell backupp-main">
         <div class="row-title">${escapeHtml(p.title||'Bez názvu')}${p.archived?' 🗄️':''}</div>
         <div class="row-sub">${client?escapeHtml(client.name)+' · ':''}${fmtDate(p.deadline)}</div>
@@ -178,7 +184,7 @@ function renderBackupp(){
       <div class="backupp-cell"><div class="backupp-lbl">Archivované</div><div class="backupp-val">${b&&b.archiveBackup ? '<span class="tag-pill" style="background:rgba(76,191,125,.22);color:#4cbf7d;">🗄️ Áno</span>' : '—'}</div></div>
       <div class="backupp-cell backupp-status">
         <div class="backupp-status-top">${driveLampsHtml(driveCount(b))}<span class="pill backupp-st-${st}">${BACKUP_STATUS_LABELS[st]}</span></div>
-        ${noSsd ? '<span class="backupp-warn" style="color:#6cb4ff;">⚡ Chýba SSD</span>' : ''}
+        ${noSsd ? '<span class="backupp-warn backupp-warn-none">⚡ Chýba SSD</span>' : ''}
         ${b&&b.sdBacked ? '<span class="backupp-ok">💾 SD ✓</span>' : '<span class="backupp-warn backupp-warn-none">💾 SD nezálohované</span>'}
       </div>
     </div>`;
