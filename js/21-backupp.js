@@ -155,6 +155,7 @@ function renderBackupp(){
     const r = backupRisk(b);
     const client = DATA.clients.find(c=>c.id===p.clientId);
     const st = b ? (b.status||'nezalohovane') : 'nezalohovane';
+    const noSsd = !!(b && !b.archiveBackup && b.drives && (b.drives.hdd||b.drives.hddCopy) && !b.drives.ssd);
     const dn = driveNames(b);
     const locs = dn.length ? dn.map(x=>`<span class="tag-pill">💽 ${escapeHtml(x)}</span>`).join(' ')
       : (b && b.locations && b.locations.length)
@@ -175,7 +176,8 @@ function renderBackupp(){
       <div class="backupp-cell"><div class="backupp-lbl">Posledná záloha</div><div class="backupp-val">${b&&b.lastBackup?fmtDate(b.lastBackup):'—'}</div></div>
       <div class="backupp-cell"><div class="backupp-lbl">Veľkosť</div><div class="backupp-val">${fmtBackupSize(b&&b.sizeGB)}</div></div>
       <div class="backupp-cell"><div class="backupp-lbl">Archivované</div><div class="backupp-val">${b&&b.archiveBackup ? '<span class="tag-pill" style="background:rgba(76,191,125,.22);color:#4cbf7d;">🗄️ Áno</span>' : '—'}</div></div>
-      <div class="backupp-cell backupp-status">
+      <div class="backupp-cell backupp-status backupp-statuscell-${st}${noSsd?' backupp-nossd':''}">
+        ${noSsd ? '<span class="backupp-warn" style="color:#6cb4ff;">⚡ Chýba záloha na SSD</span>' : ''}
         ${driveLampsHtml(driveCount(b))}
         ${b&&b.sdBacked ? '<span class="tag-pill">💾 SD ✓</span>' : '<span class="backupp-warn backupp-warn-none">💾 SD nezálohované</span>'}
         <span class="pill backupp-st-${st}">${BACKUP_STATUS_LABELS[st]}</span>
