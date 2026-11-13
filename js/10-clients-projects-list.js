@@ -175,7 +175,7 @@ function renderProjects(){
   // Tabs
   const tabsEl = document.getElementById('statusTabs');
   tabsEl.innerHTML = PROJECT_STATUSES.map(status=>{
-    const count = filtered.filter(p=>p.status===status).length;
+    const count = allFiltered.filter(p=>p.status===status).length;
     return `<div class="status-tab ${status===activeProjectStatusTab?'active':''}" data-status="${status}" onclick="selectProjectStatusTab('${status}')">
       ${STATUS_LABELS[status]} <span class="status-tab-count">${count}</span>
     </div>`;
@@ -204,7 +204,7 @@ function renderProjects(){
     const checklistDone = checklist.filter(i=>i.done).length;
     const checklistHtml = checklist.length ? `<span class="tag-pill" title="Checklist">✅ ${checklistDone}/${checklist.length}</span>` : '';
     const progressHtml = `<div class="kcard-progress">${PROJECT_STATUSES.map((s,i)=>`<div class="kcard-progress-seg ${i<=stepIdx?'filled':''}" data-seg="${s}"></div>`).join('')}</div>
-      <div class="kcard-progress-labels"><span>Dopyt</span><span>Zabook.</span><span>Nakrút.</span><span>Sprac.</span><span>Dokonč.</span></div>`;
+      <div class="kcard-progress-labels"><span>Dopyt</span><span>Zabook.</span><span>Nakrút.</span><span>Sprac.</span><span>Zaplat.</span></div>`;
     return `<div class="kcard type-${type}" onclick="openProjectModal('${p.id}')">
       ${typeTag}
       <div class="kcard-top">
