@@ -942,3 +942,6 @@
 .paid-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;}
 .paid-badge.paid-yes{background:rgba(63,185,80,.22);color:#4cbf7d;border:1px solid #3fb950;}
 .paid-badge.paid-no{background:rgba(224,60,57,.2);color:#ff6b68;border:1px solid #e03c39;}
+
+.paid-filter-group{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}
+.status-tab.paid-filter-tab.active{background:rgba(63,185,80,.25);border-color:#3fb950;color:#fff;}

@@ -136,7 +136,7 @@ var currentView = 'dashboard';
 var STATUS_LABELS = {
   dopyt:'Dopyt', potvrdene:'Potvrdené', natacanie:'Natáčanie',
   postprodukcia:'Postprodukcia', hotovo:'Hotovo', fakturovane:'Fakturované',
-  zabookovane:'Zabookované', nakrutene:'Nakrútené', spracovane:'Spracované', zaplatene:'Zaplatené'
+  zabookovane:'Zabookované', nakrutene:'Nakrútené', spracovane:'Spracované', zaplatene:'Dokončené'
 };
 var PROJECT_STATUSES = ['dopyt','zabookovane','nakrutene','spracovane','zaplatene'];
 var SOBAS_TYP_LABELS = {
