@@ -184,6 +184,7 @@ function renderBackupp(){
       <div class="backupp-cell backupp-main">
         <div class="row-title">${escapeHtml(p.title||'Bez názvu')}${p.archived?' 🗄️':''}</div>
         <div class="row-sub">${client?escapeHtml(client.name)+' · ':''}${fmtDate(p.deadline)}</div>
+        <div style="margin-top:4px;">${paidBadgeHtml(p)}</div>
         ${b && b.path ? `<div class="backupp-path" title="${escapeHtml(b.path)}">📁 ${escapeHtml(b.path)}</div>` : ''}
         ${b && b.note ? `<div class="row-sub backupp-note">📝 ${escapeHtml(b.note)}</div>` : ''}
       </div>

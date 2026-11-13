@@ -6,10 +6,20 @@
    uhradená faktúra), inak podľa stavu zákazky priamo v Zákazkách — status "zaplatene"
    (Uhradené) sa počíta ako celý rozpočet zaplatený. Toto je jediné miesto, kde sa táto
    logika počíta, aby "Vyplatené" všade v Cenotvorbe znamenalo to isté. ---- */
+/* Uhradená = ručne zaškrtnuté v zákazke, alebo status "Zaplatené", alebo uhradená faktúra
+   (zákazka môže byť zaplatená aj skôr, než je dokončená). */
+function isProjectPaid(p){
+  return !!(p.paid || p.status==='zaplatene' || DATA.invoices.some(i=>i.projectId===p.id && i.status==='uhradena'));
+}
+function paidBadgeHtml(p){
+  return isProjectPaid(p)
+    ? '<span class="paid-badge paid-yes" title="Zákazka je uhradená">💶 Uhradená</span>'
+    : '<span class="paid-badge paid-no" title="Zákazka zatiaľ nie je uhradená">💶 Neuhradená</span>';
+}
 function getProjectPaidAmount(p){
   const paidInvoices = DATA.invoices.filter(i=>i.projectId===p.id && i.status==='uhradena');
   if(paidInvoices.length) return paidInvoices.reduce((s,i)=>s+Number(i.amount||0),0);
-  return p.status === 'zaplatene' ? Number(p.budget||0) : 0;
+  return (p.paid || p.status === 'zaplatene') ? Number(p.budget||0) : 0;
 }
 
 function fillSettingsForm(){

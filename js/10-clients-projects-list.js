@@ -206,6 +206,7 @@ function renderProjects(){
         </span>
       </div>
       <div class="kcard-title">${escapeHtml(p.title||'Bez názvu')}</div>
+      <div style="margin:4px 0;">${paidBadgeHtml(p)}</div>
       <div class="kcard-meta"><span>${client?escapeHtml(client.name):'— bez klienta —'}</span>${weeksLabel?`<span>${weeksLabel}</span>`:''}</div>
       ${(tagsHtml||checklistHtml)?`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">${tagsHtml}${checklistHtml}</div>`:''}
       ${progressHtml}
