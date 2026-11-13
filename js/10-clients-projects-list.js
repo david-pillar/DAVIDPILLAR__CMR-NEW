@@ -160,14 +160,12 @@ function populateProjectClientFilter(){
   sel.value = current;
 }
 var activeProjectStatusTab = 'dopyt';
-// Platba je samostatná od stavu práce: zákazka zostáva v Nakrútených/Dokončených a tento
-// prepínač ju len dofiltruje na uhradené / neuhradené.
-var projectPaidFilter = '';
-function setProjectPaidFilter(v){ projectPaidFilter = v; renderProjects(); }
+// Záložky "Uhradené" / "Neuhradené" sú navyše: ukážu všetky zákazky (z vybraného roka)
+// podľa platby, bez ohľadu na stav — stavové záložky fungujú ďalej ako doteraz.
 function renderProjects(){
   renderYearTileBar();
   const allFiltered = getFilteredProjects();
-  const filtered = allFiltered.filter(p=> !projectPaidFilter || (projectPaidFilter==='paid' ? isProjectPaid(p) : !isProjectPaid(p)));
+  const filtered = allFiltered;
   const todayStr = toLocalISODate(new Date());
   const soonCutoff = new Date(); soonCutoff.setDate(soonCutoff.getDate()+14);
   const soonStr = toLocalISODate(soonCutoff);
@@ -181,13 +179,15 @@ function renderProjects(){
     </div>`;
   }).join('') + (()=>{
     const paidN = allFiltered.filter(isProjectPaid).length, unpaidN = allFiltered.length - paidN;
-    const b = (v,label,n)=>`<div class="status-tab paid-filter-tab ${projectPaidFilter===v?'active':''}" onclick="setProjectPaidFilter('${v}')">${label} <span class="status-tab-count">${n}</span></div>`;
-    return `<div class="paid-filter-group">${b('','Všetky platby',allFiltered.length)}${b('paid','💶 Uhradené',paidN)}${b('unpaid','💶 Neuhradené',unpaidN)}</div>`;
+    const b = (v,label,n)=>`<div class="status-tab paid-filter-tab ${activeProjectStatusTab===v?'active':''}" onclick="selectProjectStatusTab('${v}')">${label} <span class="status-tab-count">${n}</span></div>`;
+    return `<div class="paid-filter-group">${b('paid','💶 Uhradené',paidN)}${b('unpaid','💶 Neuhradené',unpaidN)}</div>`;
   })();
 
   // Card grid for the selected tab only
   const gridEl = document.getElementById('projectsGrid');
-  const items = filtered.filter(p=>p.status===activeProjectStatusTab);
+  const items = activeProjectStatusTab==='paid' ? filtered.filter(isProjectPaid)
+    : activeProjectStatusTab==='unpaid' ? filtered.filter(p=>!isProjectPaid(p))
+    : filtered.filter(p=>p.status===activeProjectStatusTab);
   gridEl.innerHTML = items.map(p=>{
     const client = DATA.clients.find(c=>c.id===p.clientId);
     const tagsHtml = (p.tags||[]).map(t=>`<span class="tag-pill">${escapeHtml(t)}</span>`).join(' ');
