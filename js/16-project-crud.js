@@ -77,7 +77,7 @@ function openProjectModal(id){
     recalcProjectPrice();
     document.getElementById('pr-contract-generated').checked = !!p.contractGenerated;
     document.getElementById('pr-contract-signed').checked = !!p.contractSigned;
-    document.getElementById('pr-paid').checked = !!p.paid;
+    document.getElementById('pr-paid').value = p.paid ? 'yes' : 'no';
     loadSignatureIntoPad(p.signatureDataUrl || '');
     renderProjectStatusIndicators(p);
   }else{
@@ -112,7 +112,7 @@ function openProjectModal(id){
     recalcProjectPrice();
     document.getElementById('pr-contract-generated').checked = false;
     document.getElementById('pr-contract-signed').checked = false;
-    document.getElementById('pr-paid').checked = false;
+    document.getElementById('pr-paid').value = 'no';
     clearSignaturePad();
     renderProjectStatusIndicators(null);
   }
@@ -208,7 +208,7 @@ async function saveProject(){
     folderCreated: (existingProject && existingProject.folderCreated) || false,
     contractGenerated: document.getElementById('pr-contract-generated').checked,
     contractSigned: document.getElementById('pr-contract-signed').checked,
-    paid: document.getElementById('pr-paid').checked,
+    paid: document.getElementById('pr-paid').value==='yes',
     signatureDataUrl: getSignatureDataUrl(),
     deliveryLink: document.getElementById('pr-delivery-link').value.trim(),
     deliveryDate: document.getElementById('pr-delivery-date').value,
