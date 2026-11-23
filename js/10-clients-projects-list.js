@@ -178,15 +178,16 @@ function renderProjects(){
       ${STATUS_LABELS[status]} <span class="status-tab-count">${count}</span>
     </div>`;
   }).join('') + (()=>{
-    const paidN = allFiltered.filter(isProjectPaid).length, unpaidN = allFiltered.length - paidN;
+    const paidN = allFiltered.filter(isProjectPaid).length, depN = allFiltered.filter(isDepositOnly).length, unpaidN = allFiltered.length - paidN - depN;
     const b = (v,label,n)=>`<div class="status-tab paid-filter-tab ${activeProjectStatusTab===v?'active':''}" onclick="selectProjectStatusTab('${v}')">${label} <span class="status-tab-count">${n}</span></div>`;
-    return `<div class="paid-filter-group">${b('paid','💶 Uhradené',paidN)}${b('unpaid','💶 Neuhradené',unpaidN)}</div>`;
+    return `<div class="paid-filter-group">${b('paid','💶 Uhradené',paidN)}${b('deposit','💶 Záloha',depN)}${b('unpaid','💶 Neuhradené',unpaidN)}</div>`;
   })();
 
   // Card grid for the selected tab only
   const gridEl = document.getElementById('projectsGrid');
   const items = activeProjectStatusTab==='paid' ? filtered.filter(isProjectPaid)
-    : activeProjectStatusTab==='unpaid' ? filtered.filter(p=>!isProjectPaid(p))
+    : activeProjectStatusTab==='deposit' ? filtered.filter(isDepositOnly)
+    : activeProjectStatusTab==='unpaid' ? filtered.filter(p=>!isProjectPaid(p) && !isDepositOnly(p))
     : filtered.filter(p=>p.status===activeProjectStatusTab);
   gridEl.innerHTML = items.map(p=>{
     const client = DATA.clients.find(c=>c.id===p.clientId);

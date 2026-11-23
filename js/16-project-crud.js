@@ -77,7 +77,7 @@ function openProjectModal(id){
     recalcProjectPrice();
     document.getElementById('pr-contract-generated').checked = !!p.contractGenerated;
     document.getElementById('pr-contract-signed').checked = !!p.contractSigned;
-    document.getElementById('pr-paid').value = p.paid ? 'yes' : 'no';
+    document.getElementById('pr-paid').value = p.paid ? 'yes' : (p.depositPaid ? 'deposit' : 'no');
     loadSignatureIntoPad(p.signatureDataUrl || '');
     renderProjectStatusIndicators(p);
   }else{
@@ -209,6 +209,7 @@ async function saveProject(){
     contractGenerated: document.getElementById('pr-contract-generated').checked,
     contractSigned: document.getElementById('pr-contract-signed').checked,
     paid: document.getElementById('pr-paid').value==='yes',
+    depositPaid: document.getElementById('pr-paid').value==='deposit',
     signatureDataUrl: getSignatureDataUrl(),
     deliveryLink: document.getElementById('pr-delivery-link').value.trim(),
     deliveryDate: document.getElementById('pr-delivery-date').value,
@@ -292,6 +293,7 @@ async function duplicateProject(){
   copy.deliveryDate = '';
   copy.deliveryConfirmed = false;
   copy.paid = false;
+  copy.depositPaid = false;
   DATA.projects.push(copy);
   await saveKey('projects', DATA.projects);
   showToast('Zákazka duplikovaná — uprav dátum a klienta');

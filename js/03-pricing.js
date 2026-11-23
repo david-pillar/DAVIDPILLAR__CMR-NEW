@@ -11,7 +11,10 @@
 function isProjectPaid(p){
   return !!(p.paid || p.status==='zaplatene' || DATA.invoices.some(i=>i.projectId===p.id && i.status==='uhradena'));
 }
+var DEPOSIT_AMOUNT = 50;
+function isDepositOnly(p){ return !isProjectPaid(p) && !!p.depositPaid; }
 function paidBadgeHtml(p){
+  if(isDepositOnly(p)) return '<span class="paid-badge paid-deposit" title="Uhradená záloha">💶 Záloha ' + DEPOSIT_AMOUNT + ' €</span>';
   return isProjectPaid(p)
     ? '<span class="paid-badge paid-yes" title="Zákazka je uhradená">💶 Uhradená</span>'
     : '<span class="paid-badge paid-no" title="Zákazka zatiaľ nie je uhradená">💶 Neuhradená</span>';
@@ -19,7 +22,8 @@ function paidBadgeHtml(p){
 function getProjectPaidAmount(p){
   const paidInvoices = DATA.invoices.filter(i=>i.projectId===p.id && i.status==='uhradena');
   if(paidInvoices.length) return paidInvoices.reduce((s,i)=>s+Number(i.amount||0),0);
-  return (p.paid || p.status === 'zaplatene') ? Number(p.budget||0) : 0;
+  if(p.paid || p.status === 'zaplatene') return Number(p.budget||0);
+  return p.depositPaid ? DEPOSIT_AMOUNT : 0;
 }
 
 function fillSettingsForm(){
