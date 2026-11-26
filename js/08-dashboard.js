@@ -237,6 +237,7 @@ async function quickSendMissingMessage(projectId, key){
   if(!project) return;
   const client = DATA.clients.find(c=>c.id===project.clientId);
   if(!client || !client.phone){ showToast('Klient nemá uložené telefónne číslo — otvor zákazku a doplň ho'); return; }
+  if(key==='poplatok'){ await sendDepositReceivedMessage(projectId); return; }
   const template = findTemplateForKey(key);
   if(!template){ showToast('Nenašla sa vhodná šablóna pre tento typ správy — over v Nastaveniach'); return; }
   const message = substituteMessagePlaceholders(template.text, project, client);

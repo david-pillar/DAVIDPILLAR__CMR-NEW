@@ -705,9 +705,21 @@ function previewReservationConfirmation(){
   const project = DATA.projects.find(p=>p.id===id);
   if(!project){ showToast('Najprv zákazku ulož'); return; }
   const client = DATA.clients.find(c=>c.id===project.clientId);
-  const w = window.open('', '_blank');
-  if(!w){ showToast('Prehliadač zablokoval nové okno'); return; }
-  w.document.write(`<title>Náhľad potvrdenia</title><body style="margin:0;background:#333;text-align:center;">${buildReservationPages(project, client).map(cv=>`<img style="max-width:100%;height:auto;display:block;margin:16px auto;" src="${cv.toDataURL('image/png')}">`).join('')}</body>`);
+  closeReservationPreview();
+  const ov = document.createElement('div');
+  ov.id = 'reservationPreviewOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);overflow:auto;padding:70px 16px 30px;text-align:center;';
+  ov.innerHTML = `<button type="button" class="btn" onclick="closeReservationPreview()" style="position:fixed;top:16px;right:16px;z-index:10000;">✕ Zavrieť náhľad</button>`
+    + buildReservationPages(project, client).map(cv=>`<img src="${cv.toDataURL('image/png')}" style="max-width:min(820px,100%);height:auto;display:block;margin:0 auto 16px;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5);">`).join('');
+  ov.addEventListener('click', e=>{ if(e.target===ov) closeReservationPreview(); });
+  document.body.appendChild(ov);
+  document.addEventListener('keydown', reservationPreviewEsc);
+}
+function reservationPreviewEsc(e){ if(e.key==='Escape') closeReservationPreview(); }
+function closeReservationPreview(){
+  const ov = document.getElementById('reservationPreviewOverlay');
+  if(ov) ov.remove();
+  document.removeEventListener('keydown', reservationPreviewEsc);
 }
 
 /* ---- Rýchle zhrnutie zákazky pre Pripomienky (Reminders) — skopíruje krátky textový

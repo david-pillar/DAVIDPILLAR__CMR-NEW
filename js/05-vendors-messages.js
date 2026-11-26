@@ -153,6 +153,7 @@ function classifyTemplateKey(name){
   // Normalize away diacritics so "Poďakovanie"/"ďakujem"/"dakujem" (with or without
   // diacritics, noun or verb form) are all reliably recognized as the same category.
   const n = (name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(n.includes('poplat')) return 'poplatok';   // musí byť pred 'potvrd' ("Potvrdenie prijatia poplatku")
   if(n.includes('potvrd')) return 'potvrdenie';
   if(n.includes('pripom')) return 'pripomienka';
   if(n.includes('dakuj')||n.includes('dakov')) return 'dakujem';
@@ -166,6 +167,9 @@ function getExpectedMessageStatus(project){
   const items = [];
   if(project.status && project.status !== 'dopyt'){
     items.push({ key:'potvrdenie', label:'Potvrdenie rezervácie', sent: sentKeys.includes('potvrdenie') });
+  }
+  if(project.depositPaid || project.paid){
+    items.push({ key:'poplatok', label:'Potvrdenie prijatia rezervačného poplatku a termínu', sent: sentKeys.includes('poplatok') });
   }
   if(project.deadline && project.deadline >= todayStr && project.deadline <= in7Str){
     items.push({ key:'pripomienka', label:'Pripomienka pred natáčaním', sent: sentKeys.includes('pripomienka') });
@@ -228,7 +232,8 @@ function renderMessageChecklist(project){
   const expectedHtml = expected.map(item=>`
     <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:${item.sent?'var(--text-faint)':'var(--text)'};margin:0;${item.sent?'text-decoration:line-through;':''}">
       <input type="checkbox" style="width:auto;" ${item.sent?'checked':''} onchange="toggleExpectedMessageSent('${project.id}','${item.key}')">
-      <span>${escapeHtml(item.label)}</span>
+      <span style="flex:1;">${escapeHtml(item.label)}</span>
+      ${item.key==='poplatok' ? `<button type="button" class="btn ghost small" style="border-color:#25D366;color:#25D366;" onclick="event.preventDefault();sendDepositReceivedMessage('${project.id}')">💬 Poslať</button>` : ''}
     </label>`).join('');
 
   const customHtml = custom.map(item=>`
@@ -280,7 +285,7 @@ async function deleteCustomMessage(projectId, itemId){
   if(typeof renderMissingMessages==='function') renderMissingMessages();
   if(typeof updateNavBadges==='function') updateNavBadges();
 }
-var MESSAGE_KEY_LABELS = { potvrdenie:'Potvrdenie rezervácie', pripomienka:'Pripomienka pred natáčaním', dakujem:'Poďakovanie po odovzdaní' };
+var MESSAGE_KEY_LABELS = { poplatok:'Potvrdenie prijatia rezervačného poplatku', potvrdenie:'Potvrdenie rezervácie', pripomienka:'Pripomienka pred natáčaním', dakujem:'Poďakovanie po odovzdaní' };
 async function toggleExpectedMessageSent(projectId, key){
   const project = DATA.projects.find(p=>p.id===projectId);
   if(!project) return;
@@ -366,3 +371,31 @@ function sendTemplatedWhatsappFromProject(){
    štarte appky, ešte pred async načítaním DATA z IndexedDB). Odomknutie platí
    len pre aktuálnu reláciu prehliadača (sessionStorage) — zavretie karty appku
    opäť zamkne. */
+
+/* ---- Potvrdenie prijatia rezervačného poplatku a zarezervovania termínu ---- */
+function buildDepositReceivedMessage(project, client){
+  const tpl = (DATA.settings.messageTemplates||[]).find(t=>classifyTemplateKey(t.name)==='poplatok');
+  if(tpl) return substituteMessagePlaceholders(tpl.text, project, client);
+  const deposit = (typeof DEPOSIT_AMOUNT!=='undefined') ? DEPOSIT_AMOUNT : 50;
+  const first = client && client.name ? ' ' + client.name.split(' ')[0] : '';
+  return `Dobrý deň${first}! 😊\n\n`
+    + `potvrdzujem prijatie rezervačného poplatku ${deposit} € — ďakujem! ✅\n`
+    + `Termín ${project.deadline ? fmtDate(project.deadline) : ''} je pre vás teraz záväzne zarezervovaný 📅\n\n`
+    + `Bližšie k termínu sa ozvem kvôli harmonogramu dňa. Ak by ste medzitým čokoľvek potrebovali, kľudne napíšte.\n\n`
+    + `Teším sa! 🎬\n${DATA.settings.ownerName || 'David'}`;
+}
+async function sendDepositReceivedMessage(projectId){
+  const project = DATA.projects.find(p=>p.id===projectId);
+  if(!project) return;
+  const client = DATA.clients.find(c=>c.id===project.clientId);
+  if(!client || !client.phone){ showToast('Klient nemá uložené telefónne číslo'); return; }
+  openWhatsapp(client.phone, buildDepositReceivedMessage(project, client));
+  if(!project.sentMessages) project.sentMessages = [];
+  if(!project.sentMessages.some(m=>classifyTemplateKey(m.templateName)==='poplatok')){
+    project.sentMessages.push({ templateId:null, templateName:'Potvrdenie prijatia rezervačného poplatku', sentAt:new Date().toISOString() });
+    await saveKey('projects', DATA.projects);
+  }
+  renderMessageStatusIndicator(project);
+  if(typeof renderMissingMessages==='function') renderMissingMessages();
+  if(typeof updateNavBadges==='function') updateNavBadges();
+}
