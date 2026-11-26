@@ -648,15 +648,16 @@ function buildReservationCanvas(project, client){
 function buildReservationPages(project, client){
   return [buildReservationCanvas(project, client)];   // všetko na jednej strane A4
 }
+/* Správa, ktorá ide spolu s PDF potvrdením — text od Davida (prijatie poplatku + rezervovaný termín). */
 function buildReservationMessage(project, client){
-  const tpl = (typeof findTemplateForKey==='function') ? findTemplateForKey('potvrdenie') : null;
-  if(tpl) return substituteMessagePlaceholders(tpl.text, project, client);
   const deposit = (typeof DEPOSIT_AMOUNT!=='undefined') ? DEPOSIT_AMOUNT : 50;
-  return `Dobrý deň${client&&client.name?' '+client.name.split(' ')[0]:''}! 😊\n\n`
-    + `ďakujem, termín ${project.deadline?fmtDate(project.deadline):''} je pre vás rezervovaný ✅\n`
-    + `V prílohe posielam potvrdenie rezervácie (PDF) so všetkými detailmi.\n\n`
-    + `Rezervácia je platná po uhradení rezervačného poplatku ${deposit} €.\n\n`
-    + `Ak by ste mali akékoľvek otázky, kľudne napíšte. Teším sa! 🎬\n${DATA.settings.ownerName||'David'}`;
+  const first = client && client.name ? ' ' + client.name.split(' ')[0] : '';
+  return `Dobrý deň${first}! 😊\n\n`
+    + `potvrdzujem prijatie rezervačného poplatku ${deposit} € — ďakujem! ✅\n`
+    + `Termín ${project.deadline ? fmtDate(project.deadline) : ''} je pre vás teraz záväzne zarezervovaný 📅\n\n`
+    + `Táto správa je automaticky vygenerovaná mojím rezervačným systémom a potvrdzuje, že váš termín je u mňa oficiálne rezervovaný. 😊\n\n`
+    + `Bližšie k termínu sa ozvem kvôli harmonogramu dňa. Ak by ste medzitým čokoľvek potrebovali, kľudne napíšte.\n\n`
+    + `Teším sa! 🙂\n\ndp`;
 }
 async function sendReservationConfirmation(){
   const id = document.getElementById('pr-id').value;
@@ -714,6 +715,13 @@ function previewReservationConfirmation(){
       <button type="button" class="btn" onclick="closeReservationPreview()">✕ Zavrieť náhľad</button>
     </div>`
     + buildReservationPages(project, client).map(cv=>`<img src="${cv.toDataURL('image/png')}" style="max-width:min(820px,100%);height:auto;display:block;margin:0 auto 16px;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5);">`).join('');
+  const msg = buildReservationMessage(project, client);
+  const box = document.createElement('div');
+  box.style.cssText = 'max-width:min(820px,100%);margin:0 auto 16px;background:#0b141a;border-radius:10px;padding:16px 18px;text-align:left;';
+  box.innerHTML = `<div style="color:#25D366;font-weight:700;font-size:13px;margin-bottom:8px;">💬 Správa, ktorá pôjde s PDF do WhatsAppu</div>
+    <div style="background:#005c4b;color:#e9edef;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.5;white-space:pre-wrap;">${escapeHtml(msg)}</div>
+    <button type="button" class="btn ghost small" style="margin-top:10px;" onclick="copyTextToClipboard(${escapeHtml(JSON.stringify(msg))})">📋 Kopírovať správu</button>`;
+  ov.appendChild(box);
   ov.addEventListener('click', e=>{ if(e.target===ov) closeReservationPreview(); });
   document.body.appendChild(ov);
   document.addEventListener('keydown', reservationPreviewEsc);

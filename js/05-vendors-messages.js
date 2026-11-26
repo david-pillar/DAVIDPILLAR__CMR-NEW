@@ -391,15 +391,7 @@ function sendTemplatedWhatsappFromProject(){
 
 /* ---- Potvrdenie prijatia rezervačného poplatku a zarezervovania termínu ---- */
 function buildDepositReceivedMessage(project, client){
-  const tpl = (DATA.settings.messageTemplates||[]).find(t=>classifyTemplateKey(t.name)==='poplatok');
-  if(tpl) return substituteMessagePlaceholders(tpl.text, project, client);
-  const deposit = (typeof DEPOSIT_AMOUNT!=='undefined') ? DEPOSIT_AMOUNT : 50;
-  const first = client && client.name ? ' ' + client.name.split(' ')[0] : '';
-  return `Dobrý deň${first}! 😊\n\n`
-    + `potvrdzujem prijatie rezervačného poplatku ${deposit} € — ďakujem! ✅\n`
-    + `Termín ${project.deadline ? fmtDate(project.deadline) : ''} je pre vás teraz záväzne zarezervovaný 📅\n\n`
-    + `Bližšie k termínu sa ozvem kvôli harmonogramu dňa. Ak by ste medzitým čokoľvek potrebovali, kľudne napíšte.\n\n`
-    + `Teším sa! 🎬\n${DATA.settings.ownerName || 'David'}`;
+  return buildReservationMessage(project, client);   // rovnaký text ako pri PDF potvrdení
 }
 async function sendDepositReceivedMessage(projectId){
   const project = DATA.projects.find(p=>p.id===projectId);

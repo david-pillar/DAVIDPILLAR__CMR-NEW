@@ -116,15 +116,18 @@ Rezervácia je platná po uhradení rezervačného poplatku 50 €.
 Ak by ste mali akékoľvek otázky, kľudne napíšte. Teším sa! 🎬
 {{konatel}}` },
     { id:'tpl-poplatok', name:'Potvrdenie prijatia rezervačného poplatku', text:
-`Dobrý deň {{meno}},
+`Dobrý deň {{meno}}! 😊
 
 potvrdzujem prijatie rezervačného poplatku 50 € — ďakujem! ✅
 Termín {{termin}} je pre vás teraz záväzne zarezervovaný 📅
 
+Táto správa je automaticky vygenerovaná mojím rezervačným systémom a potvrdzuje, že váš termín je u mňa oficiálne rezervovaný. 😊
+
 Bližšie k termínu sa ozvem kvôli harmonogramu dňa. Ak by ste medzitým čokoľvek potrebovali, kľudne napíšte.
 
-Teším sa! 🎬
-{{konatel}}` },
+Teším sa! 🙂
+
+dp` },
     { id:'tpl-pripomienka', name:'Pripomienka pred natáčaním', text:
 `Dobrý deň {{meno}},
 
