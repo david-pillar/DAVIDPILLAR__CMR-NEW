@@ -513,6 +513,200 @@ async function generateContractPDF(){
   }
 }
 
+/* ---- POTVRDENIE REZERVÁCIE — pripravené PDF + správa do WhatsAppu.
+   PDF sa kreslí cez canvas (prehliadačové písma = správna slovenská diakritika), potom sa
+   vloží do jsPDF ako obrázok A4. Na iPhone/Mac Safari sa PDF pošle rovno cez "Zdieľať"
+   do WhatsAppu aj so správou; inak sa PDF uloží/stiahne a otvorí sa WhatsApp s textom. ---- */
+/* Cena za svadbu/zákazku: to, čo je práve v poli Rozpočet otvorenej zákazky (aj neuložené),
+   inak uložený rozpočet, a ak ani ten nie je, celková cena z kalkulačky (balík + cesta + príplatky). */
+function getReservationPrice(project){
+  const openId = (document.getElementById('pr-id')||{}).value;
+  if(openId === project.id){
+    const live = Number((document.getElementById('pr-budget')||{}).value) || 0;
+    if(live) return live;
+  }
+  const saved = Number(project.budget) || 0;
+  if(saved) return saved;
+  const calcEl = document.getElementById('pr-price-total');
+  return (openId === project.id && calcEl) ? (Number(calcEl.dataset.rawValue) || 0) : 0;
+}
+function buildReservationCanvas(project, client){
+  const W = 1240, H = 1754, S = DATA.settings || {};
+  const w = project.wedding || {};
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const ACC = '#e85002', DARK = '#151515', MUTED = '#7a7671', SOFT = '#f6f3ef', LINE = '#ebe6e0', MISS = '#c9433f';
+  const font = (wt,px)=>`${wt} ${px}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+  const rr = (x,y,ww,h,r,fill,stroke)=>{ g.beginPath(); g.roundRect(x,y,ww,h,r); if(fill){ g.fillStyle=fill; g.fill(); } if(stroke){ g.strokeStyle=stroke; g.lineWidth=2; g.stroke(); } };
+  const fit = (t,max)=>{ t=String(t); while(g.measureText(t).width>max && t.length>3) t=t.slice(0,-2)+'…'; return t; };
+  const typeLabels = { svadba:'Svadba', stuzkova:'Stužková', klip:'Klip / video', ine:'Natáčanie' };
+  const balik = w.balik || (project.stuzkova && project.stuzkova.balik) || '';
+  const place = (typeof getProjectWeatherLocation==='function' && getProjectWeatherLocation(project)) || project.location || '';
+  const budget = getReservationPrice(project);
+  const deposit = (typeof DEPOSIT_AMOUNT!=='undefined') ? DEPOSIT_AMOUNT : 50;
+  const money = v => (Math.round(v*100)/100).toLocaleString('sk-SK') + ' €';
+  const resNo = 'R-' + (project.deadline||'').replace(/-/g,'').slice(0,8) + '-' + String(project.id||'').slice(-4).toUpperCase();
+  const PHONE = S.phone || '0944 550 892';
+  const X = 90, CW = W - 180;
+
+  g.fillStyle = '#fff'; g.fillRect(0,0,W,H);
+  g.fillStyle = ACC; g.fillRect(0,0,W,14);
+
+  // hlavička
+  g.fillStyle = ACC; g.font = font('700',20); g.fillText('POTVRDENIE REZERVÁCIE', X, 100);
+  g.fillStyle = DARK; g.font = font('800',46); g.fillText(S.companyName || 'David Pillar Production', X, 160);
+  g.textAlign = 'right'; g.fillStyle = MUTED; g.font = font('500',20);
+  g.fillText('č. ' + resNo, W-X, 100); g.fillText(fmtDate(toLocalISODate(new Date())), W-X, 132);
+  g.textAlign = 'left';
+  g.fillStyle = LINE; g.fillRect(X, 195, CW, 2);
+
+  g.fillStyle = DARK; g.font = font('700',30);
+  g.fillText(`Dobrý deň${client&&client.name?', '+client.name.split(' ')[0]:''}!`, X, 250);
+  g.fillStyle = MUTED; g.font = font('400',24);
+  g.fillText('Ďakujem za dôveru — váš termín je rezervovaný. Prosím, skontrolujte údaje nižšie.', X, 290);
+
+  // termín
+  rr(X, 320, CW, 160, 26, DARK);
+  g.fillStyle = '#a8a39d'; g.font = font('600',20); g.fillText('REZERVOVANÝ TERMÍN', X+44, 378);
+  g.fillStyle = '#fff'; g.font = font('800',60); g.fillText(project.deadline ? fmtDate(project.deadline) : 'podľa dohody', X+44, 450);
+  const tl = typeLabels[project.type] || 'Natáčanie';
+  g.font = font('700',24); const tw = g.measureText(tl).width + 50;
+  rr(W-X-44-tw, 372, tw, 54, 27, ACC); g.fillStyle = '#fff'; g.fillText(tl, W-X-44-tw+25, 408);
+
+  // detaily — 3 v rade, chýbajúce = "neuvedené"
+  let tiles;
+  if(project.type === 'svadba'){
+    const sobasTyp = (typeof SOBAS_TYP_LABELS!=='undefined' && SOBAS_TYP_LABELS[w.sobasTyp]) || w.sobasTyp || '';
+    const hudbaTyp = (typeof HUDBA_TYP_LABELS!=='undefined' && HUDBA_TYP_LABELS[w.hudbaTyp]) || w.hudbaTyp || '';
+    tiles = [
+      ['Nevesta', w.nevestaMeno], ['Odkiaľ je nevesta', w.nevestaAdresa], ['Balík', balik && 'Balík '+balik],
+      ['Ženích', w.zenichMeno], ['Odkiaľ je ženích', w.zenichAdresa], ['Fotograf', w.fotograf],
+      ['Typ sobáša', sobasTyp], ['Čas obradu', w.sobasCas], ['Hudba', [hudbaTyp, w.hudbaMeno].filter(Boolean).join(' — ')],
+      ['Kostol / obrad', [w.sobasKostol, w.sobasAdresa].filter(Boolean).join(', ')], ['Hostina / oslava', w.svadbaMiesto], ['Klient', client && client.name],
+    ];
+  }else{
+    tiles = [['Zákazka', project.title], ['Klient', client && client.name], ['Miesto', place], ['Balík', balik && 'Balík '+balik]];
+    if(project.stuzkova && project.stuzkova.pocetZiakov) tiles.push(['Počet žiakov', project.stuzkova.pocetZiakov]);
+    if(project.stuzkova && project.stuzkova.hudba) tiles.push(['Hudba', project.stuzkova.hudba]);
+  }
+  const COLS = 3, GAP = 16, TW = (CW - GAP*(COLS-1))/COLS, TH = 92;
+  let y = 510;
+  tiles.forEach((t,i)=>{
+    const tx = X + (i%COLS)*(TW+GAP), ty = y + Math.floor(i/COLS)*(TH+GAP);
+    const val = String(t[1]||'').trim();
+    rr(tx, ty, TW, TH, 18, val ? SOFT : '#fff', val ? null : '#f0c9c7');
+    g.fillStyle = MUTED; g.font = font('600',16); g.fillText(t[0].toUpperCase(), tx+24, ty+34);
+    g.font = val ? font('700',24) : font('500',21); g.fillStyle = val ? DARK : MISS;
+    g.fillText(fit(val || 'neuvedené — doplňte', TW-48), tx+24, ty+70);
+  });
+  y += Math.ceil(tiles.length/COLS)*(TH+GAP) + 4;
+
+  if(project.type === 'svadba'){
+    const wishes = String(w.specialWishes||'').trim();
+    rr(X, y, CW, 84, 18, wishes ? SOFT : '#fff', wishes ? null : '#f0c9c7');
+    g.fillStyle = MUTED; g.font = font('600',16); g.fillText('ŠPECIÁLNE PRIANIA', X+24, y+32);
+    g.font = font('500',21); g.fillStyle = wishes ? DARK : MISS;
+    g.fillText(fit(wishes || 'neuvedené — ak máte špeciálne priania, napíšte mi ich', CW-48), X+24, y+66);
+    y += 84 + 30;
+  }else{ y += 20; }
+
+  // platba
+  const pay = budget ? [
+    ['Cena za ' + ({svadba:'svadbu', stuzkova:'stužkovú', klip:'video'}[project.type] || 'natáčanie'), money(budget), true],
+    ['Rezervácia (záloha)', money(deposit) + (project.depositPaid||project.paid ? '  ✓ uhradená' : ''), false],
+    ['Zostáva doplatiť', money(Math.max(0,budget-deposit)), false],
+  ] : [['Rezervácia (záloha)', money(deposit), true]];
+  const PH = 60 + pay.length*62;
+  rr(X, y, CW, PH, 22, null, LINE);
+  g.fillStyle = DARK; g.font = font('700',24); g.fillText('Platba', X+34, y+50);
+  pay.forEach(([k,v,big],i)=>{
+    const ry = y + 60 + i*62 + 38;
+    if(i>0){ g.fillStyle = LINE; g.fillRect(X+34, ry-40, CW-68, 2); }
+    g.fillStyle = MUTED; g.font = font('500',22); g.fillText(k, X+34, ry);
+    g.textAlign = 'right'; g.fillStyle = big ? ACC : DARK; g.font = font(big?'800':'700', big?28:24);
+    g.fillText(v, W-X-34, ry); g.textAlign = 'left';
+  });
+  y += PH + 34;
+  g.fillStyle = MUTED; g.font = font('400',19);
+  if(budget){ g.fillText('Doplatok sa uhrádza po odovzdaní hotového videa — približne do 3–4 mesiacov od natáčania.', X, y); y += 30; }
+  g.fillText('Rezervácia je platná po uhradení zálohy. Pri zrušení zo strany klienta je záloha nevratná.', X, y); y += 30;
+  g.fillText('Podrobný harmonogram dňa doladíme spolu pred termínom.', X, y);
+
+  // podpis (dole nad pätou)
+  const sy = H - 200;
+  g.fillStyle = DARK; g.font = font('700',28); g.fillText('Teším sa na spoluprácu!', X, sy);
+  g.fillStyle = ACC; g.font = font('600',24); g.fillText(S.ownerName || 'David Pillar', X, sy+40);
+  g.textAlign = 'right'; g.fillStyle = DARK; g.font = font('700',26); g.fillText('📞 ' + PHONE, W-X, sy+40); g.textAlign = 'left';
+
+  g.fillStyle = LINE; g.fillRect(X, H-110, CW, 2);
+  g.fillStyle = MUTED; g.font = font('500',19); g.textAlign = 'center';
+  g.fillText([S.companyName || 'David Pillar Production', PHONE, S.email].filter(Boolean).join('   ·   '), W/2, H-62);
+  g.textAlign = 'left';
+  g.fillStyle = ACC; g.fillRect(0, H-14, W, 14);
+  return c;
+}
+function buildReservationMessage(project, client){
+  const tpl = (typeof findTemplateForKey==='function') ? findTemplateForKey('potvrdenie') : null;
+  if(tpl) return substituteMessagePlaceholders(tpl.text, project, client);
+  const deposit = (typeof DEPOSIT_AMOUNT!=='undefined') ? DEPOSIT_AMOUNT : 50;
+  return `Dobrý deň${client&&client.name?' '+client.name.split(' ')[0]:''}! 😊\n\n`
+    + `ďakujem, termín ${project.deadline?fmtDate(project.deadline):''} je pre vás rezervovaný ✅\n`
+    + `V prílohe posielam potvrdenie rezervácie (PDF) so všetkými detailmi.\n\n`
+    + `Rezervácia je platná po uhradení zálohy ${deposit} €.\n\n`
+    + `Ak by ste mali akékoľvek otázky, kľudne napíšte. Teším sa! 🎬\n${DATA.settings.ownerName||'David'}`;
+}
+async function sendReservationConfirmation(){
+  const id = document.getElementById('pr-id').value;
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project){ showToast('Najprv zákazku ulož'); return; }
+  if(!window.jspdf){ showToast('PDF knižnica sa ešte načítava, skús o chvíľu'); return; }
+  const client = DATA.clients.find(c=>c.id===project.clientId);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  buildReservationPages(project, client).forEach((cv,i)=>{
+    if(i>0) doc.addPage();
+    doc.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 595.28, 841.89);
+  });
+  const filename = `potvrdenie-rezervacie-${sanitizeName(project.title)}.pdf`;
+  const message = buildReservationMessage(project, client);
+
+  // 1) Zdieľanie aj s PDF prílohou (Safari na iPhone/Mac → WhatsApp)
+  let shared = false;
+  try{
+    const file = new File([doc.output('blob')], filename, { type:'application/pdf' });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      await navigator.share({ files:[file], text: message, title:'Potvrdenie rezervácie' });
+      shared = true;
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+
+  // 2) Inak PDF uložiť do priečinka zákazky / stiahnuť + otvoriť WhatsApp s textom
+  if(!shared){
+    await saveDocSmart(doc, filename, project.folderName || project.title);
+    if(client && client.phone) openWhatsapp(client.phone, message);
+    else showToast('PDF pripravené — klient nemá telefón, správu pošli ručne');
+  }
+
+  // zapísať ako odoslané potvrdenie (Dashboard → Chýbajúce správy)
+  if(!project.sentMessages) project.sentMessages = [];
+  if(!project.sentMessages.some(m=>classifyTemplateKey(m.templateName)==='potvrdenie')){
+    project.sentMessages.push({ templateId:null, templateName:'Potvrdenie rezervácie', sentAt:new Date().toISOString() });
+    await saveKey('projects', DATA.projects);
+    if(typeof renderMessageStatusIndicator==='function') renderMessageStatusIndicator(project);
+    if(typeof renderMissingMessages==='function') renderMissingMessages();
+    if(typeof updateNavBadges==='function') updateNavBadges();
+  }
+}
+function previewReservationConfirmation(){
+  const id = document.getElementById('pr-id').value;
+  const project = DATA.projects.find(p=>p.id===id);
+  if(!project){ showToast('Najprv zákazku ulož'); return; }
+  const client = DATA.clients.find(c=>c.id===project.clientId);
+  const w = window.open('', '_blank');
+  if(!w){ showToast('Prehliadač zablokoval nové okno'); return; }
+  w.document.write(`<title>Náhľad potvrdenia</title><body style="margin:0;background:#333;text-align:center;">${buildReservationPages(project, client).map(cv=>`<img style="max-width:100%;height:auto;display:block;margin:16px auto;" src="${cv.toDataURL('image/png')}">`).join('')}</body>`);
+}
+
 /* ---- Rýchle zhrnutie zákazky pre Pripomienky (Reminders) — skopíruje krátky textový
    prehľad do schránky, aby si ho jedným Cmd+V vložil ako novú pripomienku.
    buildProjectReminderSummary() je zdieľaná aj tlačidlom v detaile zákazky, aj rýchlou
