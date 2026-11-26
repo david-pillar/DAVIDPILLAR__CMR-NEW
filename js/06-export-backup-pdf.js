@@ -613,9 +613,9 @@ function buildReservationCanvas(project, client){
   // platba
   const pay = budget ? [
     ['Cena za ' + ({svadba:'svadbu', stuzkova:'stužkovú', klip:'video'}[project.type] || 'natáčanie'), money(budget), true],
-    ['Rezervácia (záloha)', money(deposit) + (project.depositPaid||project.paid ? '  ✓ uhradená' : ''), false],
-    ['Zostáva doplatiť', money(Math.max(0,budget-deposit)), false],
-  ] : [['Rezervácia (záloha)', money(deposit), true]];
+    ['Rezervačný poplatok (navyše k cene)', money(deposit) + (project.depositPaid||project.paid ? '  ✓ uhradený' : ''), false],
+    ['Doplatok po odovzdaní videa', money(budget), false],
+  ] : [['Rezervačný poplatok', money(deposit), true]];
   const PH = 60 + pay.length*62;
   rr(X, y, CW, PH, 22, null, LINE);
   g.fillStyle = DARK; g.font = font('700',24); g.fillText('Platba', X+34, y+50);
@@ -629,7 +629,7 @@ function buildReservationCanvas(project, client){
   y += PH + 34;
   g.fillStyle = MUTED; g.font = font('400',19);
   if(budget){ g.fillText('Doplatok sa uhrádza po odovzdaní hotového videa — približne do 3–4 mesiacov od natáčania.', X, y); y += 30; }
-  g.fillText('Rezervácia je platná po uhradení zálohy. Pri zrušení zo strany klienta je záloha nevratná.', X, y); y += 30;
+  g.fillText('Rezervácia je platná po uhradení rezervačného poplatku. Pri zrušení zo strany klienta je nevratný.', X, y); y += 30;
   g.fillText('Podrobný harmonogram dňa doladíme spolu pred termínom.', X, y);
 
   // podpis (dole nad pätou)
@@ -655,7 +655,7 @@ function buildReservationMessage(project, client){
   return `Dobrý deň${client&&client.name?' '+client.name.split(' ')[0]:''}! 😊\n\n`
     + `ďakujem, termín ${project.deadline?fmtDate(project.deadline):''} je pre vás rezervovaný ✅\n`
     + `V prílohe posielam potvrdenie rezervácie (PDF) so všetkými detailmi.\n\n`
-    + `Rezervácia je platná po uhradení zálohy ${deposit} €.\n\n`
+    + `Rezervácia je platná po uhradení rezervačného poplatku ${deposit} €.\n\n`
     + `Ak by ste mali akékoľvek otázky, kľudne napíšte. Teším sa! 🎬\n${DATA.settings.ownerName||'David'}`;
 }
 async function sendReservationConfirmation(){
