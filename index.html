@@ -1030,6 +1030,13 @@
               <div style="margin-top:10px;"><label>Šablóna WhatsApp správy</label><select id="pr-message-template" onchange="updateMessagePreview()"></select></div>
               <div id="pr-message-preview" style="display:none;margin-top:10px;background:var(--surface-3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-dim);white-space:pre-line;"></div>
               <button class="btn ghost small" style="margin-top:10px;" onclick="sendTemplatedWhatsappFromProject()">💬 Poslať na WhatsApp</button>
+              <div id="pr-confirm-box" style="margin-top:12px;padding:12px;border:1px solid #25D366;border-radius:8px;background:rgba(37,211,102,.08);">
+                <p class="row-sub" style="margin:0 0 8px;">✅ Potvrdenie rezervácie — PDF + pripravená správa do WhatsAppu</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="btn ghost small" id="pr-confirm-preview-btn" onclick="previewReservationConfirmation()">👁️ Náhľad PDF</button>
+                  <button type="button" class="btn small" id="pr-confirm-btn" style="background:#25D366;border-color:#25D366;color:#fff;" onclick="sendReservationConfirmation()">Poslať potvrdenie → WhatsApp</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1171,8 +1178,6 @@
           <button class="btn ghost" onclick="manualSyncProjectFolder()">📁 Aktualizovať priečinok</button>
           <button class="btn ghost" id="pr-schedule-btn" style="display:none;" onclick="generateDaySchedulePDF()">🗓️ Harmonogram (PDF)</button>
           <button class="btn ghost" id="pr-questionnaire-btn" style="display:none;" onclick="generateClientQuestionnairePdf()">📋 Dotazník pre klienta (PDF)</button>
-          <button class="btn ghost" id="pr-confirm-preview-btn" style="display:none;" onclick="previewReservationConfirmation()" title="Náhľad PDF potvrdenia">👁️ Náhľad potvrdenia</button>
-          <button class="btn ghost" id="pr-confirm-btn" style="display:none;border-color:#25D366;color:#25D366;" onclick="sendReservationConfirmation()" title="Vytvorí PDF potvrdenie rezervácie a otvorí WhatsApp s pripravenou správou">✅ Potvrdenie rezervácie → WhatsApp</button>
           <button class="btn ghost" id="pr-remind-btn" style="display:none;" onclick="copyProjectReminderSummary()" title="Skopíruje krátke zhrnutie zákazky do schránky na vloženie do Pripomienok">🔔 Kopírovať pre Pripomienky</button>
           <button class="btn ghost" onclick="generateContractPDF()">📄 Zmluva (PDF)</button>
           <button class="btn" onclick="saveProject()">Uložiť zákazku</button>

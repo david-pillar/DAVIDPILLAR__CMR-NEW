@@ -15,8 +15,7 @@ function openProjectModal(id){
   document.getElementById('pr-delete').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('pr-duplicate-btn').style.display = editing ? 'inline-flex' : 'none';
   document.getElementById('pr-remind-btn').style.display = editing ? 'inline-flex' : 'none';
-  document.getElementById('pr-confirm-btn').style.display = editing ? 'inline-flex' : 'none';
-  document.getElementById('pr-confirm-preview-btn').style.display = editing ? 'inline-flex' : 'none';
+  document.getElementById('pr-confirm-box').style.display = editing ? 'block' : 'none';
   clearWeddingFields();
   clearStuzkovaFields();
   if(editing){

@@ -645,6 +645,9 @@ function buildReservationCanvas(project, client){
   g.fillStyle = ACC; g.fillRect(0, H-14, W, 14);
   return c;
 }
+function buildReservationPages(project, client){
+  return [buildReservationCanvas(project, client)];   // všetko na jednej strane A4
+}
 function buildReservationMessage(project, client){
   const tpl = (typeof findTemplateForKey==='function') ? findTemplateForKey('potvrdenie') : null;
   if(tpl) return substituteMessagePlaceholders(tpl.text, project, client);
