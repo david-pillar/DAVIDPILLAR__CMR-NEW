@@ -709,7 +709,10 @@ function previewReservationConfirmation(){
   const ov = document.createElement('div');
   ov.id = 'reservationPreviewOverlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);overflow:auto;padding:70px 16px 30px;text-align:center;';
-  ov.innerHTML = `<button type="button" class="btn" onclick="closeReservationPreview()" style="position:fixed;top:16px;right:16px;z-index:10000;">✕ Zavrieť náhľad</button>`
+  ov.innerHTML = `<div style="position:fixed;top:16px;right:16px;z-index:10000;display:flex;gap:8px;">
+      <button type="button" class="btn ghost" onclick="previewReservationConfirmation()" title="Znovu načítať PDF z aktuálnych údajov zákazky" style="background:#1d1d1d;">↻ Obnoviť</button>
+      <button type="button" class="btn" onclick="closeReservationPreview()">✕ Zavrieť náhľad</button>
+    </div>`
     + buildReservationPages(project, client).map(cv=>`<img src="${cv.toDataURL('image/png')}" style="max-width:min(820px,100%);height:auto;display:block;margin:0 auto 16px;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.5);">`).join('');
   ov.addEventListener('click', e=>{ if(e.target===ov) closeReservationPreview(); });
   document.body.appendChild(ov);
