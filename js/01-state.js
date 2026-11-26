@@ -108,10 +108,23 @@ Poznámka: harmonogram je orientačný, časy priprav a obradu si over s kliento
     { id:'tpl-potvrdenie', name:'Potvrdenie rezervácie', text:
 `Dobrý deň {{meno}},
 
-potvrdzujem rezerváciu termínu {{termin}} — {{nazov_zakazky}}.
+ďakujem, termín {{termin}} je pre vás rezervovaný ✅
+V prílohe posielam potvrdenie rezervácie (PDF) so všetkými detailmi — prosím, skontrolujte ich.
 
-Teším sa na spoluprácu!
-{{firma}}` },
+Rezervácia je platná po uhradení rezervačného poplatku 50 €.
+
+Ak by ste mali akékoľvek otázky, kľudne napíšte. Teším sa! 🎬
+{{konatel}}` },
+    { id:'tpl-poplatok', name:'Potvrdenie prijatia rezervačného poplatku', text:
+`Dobrý deň {{meno}},
+
+potvrdzujem prijatie rezervačného poplatku 50 € — ďakujem! ✅
+Termín {{termin}} je pre vás teraz záväzne zarezervovaný 📅
+
+Bližšie k termínu sa ozvem kvôli harmonogramu dňa. Ak by ste medzitým čokoľvek potrebovali, kľudne napíšte.
+
+Teším sa! 🎬
+{{konatel}}` },
     { id:'tpl-pripomienka', name:'Pripomienka pred natáčaním', text:
 `Dobrý deň {{meno}},
 

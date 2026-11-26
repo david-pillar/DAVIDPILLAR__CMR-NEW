@@ -87,6 +87,7 @@ function guessTemplateIcon(name){
 function renderMessageTemplates(){
   const el = document.getElementById('messageTemplatesList');
   if(!el) return;
+  ensureDefaultMessageTemplates();
   const templates = DATA.settings.messageTemplates || [];
   if(!templates.length){ el.innerHTML = '<div class="empty">Zatiaľ žiadne šablóny.</div>'; return; }
   el.innerHTML = `<div class="msg-template-grid">${templates.map(t=>`
@@ -140,7 +141,7 @@ function substituteMessagePlaceholders(text, project, client){
     '{{nazov_zakazky}}': project ? (project.title||'') : '',
     '{{termin}}': project && project.deadline ? fmtDate(project.deadline) : 'dohodou',
     '{{firma}}': s.companyName || '',
-    '{{konatel}}': s.ownerName || ''
+    '{{konatel}}': s.ownerName || 'David Pillar'
   };
   let out = text || '';
   Object.keys(map).forEach(k=>{ out = out.split(k).join(map[k]); });
@@ -306,9 +307,25 @@ async function toggleExpectedMessageSent(projectId, key){
   if(typeof renderMissingMessages==='function') renderMissingMessages();
   if(typeof updateNavBadges==='function') updateNavBadges();
 }
+/* Doplní chýbajúce/prázdne základné šablóny (Potvrdenie, Poplatok, Pripomienka, Poďakovanie)
+   z predvolených — vlastné šablóny s textom nechá tak, ako sú. */
+function ensureDefaultMessageTemplates(){
+  if(typeof DEFAULT_SETTINGS==='undefined' || !DEFAULT_SETTINGS.messageTemplates) return;
+  if(!Array.isArray(DATA.settings.messageTemplates)) DATA.settings.messageTemplates = [];
+  const list = DATA.settings.messageTemplates;
+  let changed = false;
+  DEFAULT_SETTINGS.messageTemplates.forEach(def=>{
+    const key = classifyTemplateKey(def.name);
+    const existing = list.find(t=>classifyTemplateKey(t.name)===key);
+    if(!existing){ list.push({...def}); changed = true; }
+    else if(!String(existing.text||'').trim()){ existing.text = def.text; changed = true; }
+  });
+  if(changed) saveKey('settings', DATA.settings);
+}
 function populateMessageTemplatePicker(){
   const sel = document.getElementById('pr-message-template');
   if(!sel) return;
+  ensureDefaultMessageTemplates();
   const templates = DATA.settings.messageTemplates || [];
   sel.innerHTML = '<option value="">— vlastný text —</option>' + templates.map(t=>`<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
 }
